@@ -1,0 +1,19 @@
+import { useState } from 'react';
+import { useI18n } from '../lib/i18n';
+import { CURRENCIES, totals } from '../lib/finance';
+import { displayLedger, validateRates } from '../lib/ledger';
+import { api } from '../lib/api';
+import { Icon } from './Icon';
+export function RateEditor({ ledger, onSave, onClose, busy }) {
+  const { t, locale, money, error } = useI18n();
+  const [currency,setCurrency]=useState(ledger.currency);
+  const [rates,setRates]=useState(ledger.rates);
+  const [info,setInfo]=useState(ledger.rateInfo);
+  const [loading,setLoading]=useState(false);
+  const [message,setMessage]=useState('');
+  let preview=null;
+  try { preview=displayLedger({...ledger,currency,rates:validateRates(Object.fromEntries(Object.entries(rates).map(([k,v])=>[k,Number(v)])))}); }catch{}
+  async function latest(){setLoading(true);setMessage('');try{const quote=await api('/rates');setRates(quote.rates);setInfo(quote.rateInfo);}catch(e){setMessage(error(e));}finally{setLoading(false);}}
+  async function submit(e){e.preventDefault();if(busy||loading)return;try{const next={...ledger,currency,rates:validateRates(Object.fromEntries(Object.entries(rates).map(([k,v])=>[k,Number(v)]))),rateInfo:info};const result=await onSave(next);if(result)setMessage(result);}catch(e){setMessage(error(e));}}
+  return <form className="form" onSubmit={submit}><label>{t('Mostrar mis ahorros en','Show my savings in')}<select value={currency} onChange={e=>setCurrency(e.target.value)}>{Object.keys(CURRENCIES).map(code=><option key={code}>{code}</option>)}</select></label><div className="rate-preview"><span>{t('Saldo actual','Current balance')}</span><strong>{money(totals(displayLedger(ledger).movements).balance,ledger.currency)}</strong><Icon name="down" /><span>{t('Con esta configuración','With these settings')}</span><strong>{preview?money(totals(preview.movements).balance,currency):'—'}</strong></div><div className="rate-heading"><h3>{t('Tasas por 1 USD','Rates per 1 USD')}</h3><button type="button" className="text-button" onClick={latest} disabled={loading||busy}><Icon name="refresh" size={15}/>{loading?t('Consultando…','Fetching…'):t('Obtener tasas actuales','Fetch current rates')}</button></div><div className="rate-grid">{Object.keys(CURRENCIES).map(code=><label key={code}>1 USD = {code}<input aria-label={`1 USD en ${code}`} type="number" min="0.000001" max="1000000" step="0.000001" required readOnly={code==='USD'} value={rates[code]} onChange={e=>{setRates({...rates,[code]:e.target.value});setInfo({source:'manual',date:new Date().toISOString()});}} /></label>)}</div><p className="hint">{info.source==='manual'?t('Tasas manuales. Los valores iniciales son ejemplos editables, no cotizaciones actuales.','Manual rates. Initial values are editable examples, not current quotes.'):t('Fuente: ExchangeRate-API. Cotización de referencia diaria.','Source: ExchangeRate-API. Daily reference rates.')} {info.date&&new Date(info.date).toLocaleString(locale)}</p><p className="muted">{t('Se convierten el saldo, el historial y la meta. Cada registro conserva su importe y moneda originales; cambiar de moneda no mueve dinero.','Your balance, history and goal are converted. Each record keeps its original amount and currency; changing currencies does not transfer money.')}</p><a className="text-button" href="https://www.exchangerate-api.com" target="_blank" rel="noreferrer">Rates By Exchange Rate API</a>{message&&<p role="alert" className="form-error">{message}</p>}<div className="modal-actions"><button className="button secondary" type="button" onClick={onClose} disabled={busy||loading}>{t('Cancelar','Cancel')}</button><button className="button primary" disabled={busy||loading||!preview}>{busy?t('Guardando…','Saving…'):t('Confirmar conversión','Confirm conversion')}</button></div></form>;
+}
