@@ -3,3 +3,8 @@ node_modules/
 *.log
 .env
 backups/
+.env.*
+!.env.example
+supabase/.temp/
+supabase/.branches/
+certs/*.crt

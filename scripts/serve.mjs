@@ -4,7 +4,8 @@ import { extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 import { loadEnvFile } from 'node:process';
-import { createPool, migrate } from '../server/db.mjs';
+import { createPool, checkSchema } from '../server/db.mjs';
+import { createRecurringService } from '../server/recurring.mjs';
 import { createMailService } from '../server/mail.mjs';
 import { createApi } from '../server/api.mjs';
 try { loadEnvFile(new URL('../.env', import.meta.url)); } catch(e) { if(e.code !== 'ENOENT') throw e; }
@@ -20,10 +21,12 @@ const origin = process.env.APP_ORIGIN || `http://localhost:${appPort}`;
 const origins = [origin];
 if (new URL(origin).hostname === 'localhost') origins.push(origin.replace('localhost', '127.0.0.1'));
 if (process.env.NODE_ENV !== 'production') origins.push('http://localhost:5173', 'http://127.0.0.1:5173');
-const pool = createPool(process.env.DATABASE_URL);
-try { await migrate(pool); } catch (e) { console.error('No se pudo iniciar PostgreSQL. Revisa DATABASE_URL y que la base esté disponible. Código:', e.code || 'DB_ERROR'); await pool.end(); process.exit(1); }
+let pool;
+try { pool = createPool(process.env.DATABASE_URL); await checkSchema(pool); } catch (e) { console.error('No se pudo conectar a Supabase. Ejecuta npm run db:check y revisa docs/SUPABASE.md. Código:', e.code || 'DB_ERROR'); if(pool) await pool.end(); process.exit(1); }
 const mailService = createMailService(pool);
-const api = createApi(pool, { origins, mailService });
+const recurringService = createRecurringService(pool);
+const api = createApi(pool, { origins, mailService, recurringService });
+recurringService.start();
 mailService.start();
 const server = createServer(async (req, res) => {
   if (await api(req, res)) return;
@@ -58,4 +61,4 @@ server.listen(appPort, appHost, () => {
   }
 });
 
-for (const signal of ['SIGINT','SIGTERM']) process.on(signal, () => { mailService.stop(); server.close(async () => { await pool.end(); process.exit(0); }); server.closeIdleConnections(); });
+for (const signal of ['SIGINT','SIGTERM']) process.on(signal, () => { mailService.stop(); recurringService.stop(); server.close(async () => { await pool.end(); process.exit(0); }); server.closeIdleConnections(); });

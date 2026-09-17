@@ -1,38 +1,22 @@
 name: ahorra-plus
 services:
-  db:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-ahorra}
-      POSTGRES_DB: ${POSTGRES_DB:-ahorra_plus}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Ejecuta primero node scripts/configure.mjs}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
   app:
     build: .
     restart: unless-stopped
+    env_file: .env
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-ahorra}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-ahorra_plus}
+      DATABASE_URL: ${DATABASE_URL:?Configura DATABASE_URL con Supabase en .env}
       APP_ORIGIN: ${APP_ORIGIN:-http://localhost:4173}
       APP_HOST: 0.0.0.0
       PORT: 4173
       NODE_ENV: production
-      MAIL_ENCRYPTION_KEY: ${MAIL_ENCRYPTION_KEY:-}
+      DB_SSL_CA_FILE: ${DB_SSL_CA_FILE:+/app/certs/supabase-ca.crt}
+    volumes:
+      - ./certs:/app/certs:ro
     ports:
       - "127.0.0.1:4173:4173"
-    depends_on:
-      db:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4173/api/health',{headers:{host:new URL(process.env.APP_ORIGIN).host}}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
-      retries: 20
-volumes:
-  postgres_data:
+      retries: 10

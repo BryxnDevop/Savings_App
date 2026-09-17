@@ -37,8 +37,8 @@ test('API + SQL: cuentas, sesiones, aislamiento, perfil, revisión concurrente, 
     assert.equal((await a.request('/profile','PATCH',{avatar:'data:image/svg+xml;base64,PHN2Zz4='})).status,400);
     assert.equal((await a.request('/profile','PATCH',{name:'Malicious'}, {Origin:'https://evil.invalid'})).status,403);
     const raw=await fetch(origin+'/api/state',{method:'PUT',headers:{Cookie:a.cookie,'Content-Type':'application/json'},body:JSON.stringify({revision:2,ledger})});assert.equal(raw.status,403);
-    const {rows:[secret]}=await pool.query('SELECT password_hash FROM ahorra_users WHERE id=$1',[ids[0]]);assert.notEqual(secret.password_hash,password);assert.match(secret.password_hash,/^scrypt:/);
-    const token=a.cookie.split('=')[1];const {rows:[session]}=await pool.query('SELECT token_hash FROM ahorra_sessions WHERE user_id=$1',[ids[0]]);assert.notEqual(session.token_hash,token);
+    const {rows:[secret]}=await pool.query('SELECT password_hash FROM ahorra.ahorra_users WHERE id=$1',[ids[0]]);assert.notEqual(secret.password_hash,password);assert.match(secret.password_hash,/^scrypt:/);
+    const token=a.cookie.split('=')[1];const {rows:[session]}=await pool.query('SELECT token_hash FROM ahorra.ahorra_sessions WHERE user_id=$1',[ids[0]]);assert.notEqual(session.token_hash,token);
     await stop();await start();assert.equal((await a.request('/auth/me')).body.user.name,'Ana María');assert.equal((await a.request('/state')).body.ledger.movements[0].amountCents,15000);
     const parallel=client();assert.equal((await parallel.request('/auth/login','POST',{email:emailA,password})).status,200);
     assert.equal((await a.request('/auth/password','POST',{currentPassword:password,password:'A-new-secure-password-739'})).status,200);
@@ -50,5 +50,5 @@ test('API + SQL: cuentas, sesiones, aislamiento, perfil, revisión concurrente, 
     assert.equal((await guest.request('/state')).body.ledger.movements.length,1);
     assert.equal((await b.request('/auth/me')).body.user.name,'Ben');
     console.log('PostgreSQL:',(await pool.query('SELECT version()')).rows[0].version.split(' on ')[0]);
-  }finally{await stop();if(ids.length)await pool.query('DELETE FROM ahorra_users WHERE id=ANY($1::uuid[])',[ids]);await pool.end();}
+  }finally{await stop();if(ids.length)await pool.query('DELETE FROM ahorra.ahorra_users WHERE id=ANY($1::uuid[])',[ids]);await pool.end();}
 });

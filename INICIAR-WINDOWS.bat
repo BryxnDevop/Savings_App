@@ -6,28 +6,18 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
-where docker >nul 2>nul
-if errorlevel 1 (
-  echo Instala Docker Desktop e inicialo antes de continuar.
-  pause
-  exit /b 1
+if not exist node_modules (
+  call npm ci
+  if errorlevel 1 goto error
 )
-docker info >nul 2>nul
-if errorlevel 1 (
-  echo Abre Docker Desktop y espera a que el motor Linux este listo.
-  echo Luego vuelve a abrir este archivo. Consulta README.md si no arranca.
-  pause
-  exit /b 1
-)
-node scripts\configure.mjs
+call npm run setup
 if errorlevel 1 goto error
-docker compose up -d --build --wait
+call npm run db:check
 if errorlevel 1 goto error
-start "" http://localhost:4173
-echo Ahorra+ esta lista. Crea tu cuenta en la pantalla de inicio.
-pause
+call npm start -- --open
+if errorlevel 1 goto error
 exit /b 0
 :error
-echo No se pudo iniciar. Revisa que Docker Desktop este abierto y consulta README.md.
+echo Revisa docs\SUPABASE.md. Configura Supabase y .env antes de iniciar.
 pause
 exit /b 1

@@ -32,14 +32,14 @@ export function cookie(token, secure, clear = false) {
 }
 export async function createSession(client, userId) {
   const token = randomBytes(32).toString('hex');
-  await client.query('DELETE FROM ahorra_sessions WHERE expires_at <= now()');
-  await client.query("INSERT INTO ahorra_sessions(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '30 days')", [tokenHash(token), userId]);
+  await client.query('DELETE FROM ahorra.ahorra_sessions WHERE expires_at <= now()');
+  await client.query("INSERT INTO ahorra.ahorra_sessions(token_hash,user_id,expires_at) VALUES($1,$2,now()+interval '30 days')", [tokenHash(token), userId]);
   return token;
 }
 export async function authenticate(pool, req) {
   const token = cookieToken(req);
   if (!/^[a-f0-9]{64}$/.test(token)) throw fail('UNAUTHORIZED', 401);
-  const { rows: [user] } = await pool.query('SELECT u.id,u.email,u.name,u.language,u.avatar FROM ahorra_sessions s JOIN ahorra_users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>now()', [tokenHash(token)]);
+  const { rows: [user] } = await pool.query('SELECT u.id,u.email,u.name,u.language,u.avatar FROM ahorra.ahorra_sessions s JOIN ahorra.ahorra_users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>now()', [tokenHash(token)]);
   if (!user) throw fail('UNAUTHORIZED', 401);
   return user;
 }

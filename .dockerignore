@@ -5,3 +5,7 @@ dist
 .git
 backups
 *.zip
+
+supabase/.temp
+supabase/.branches
+certs/*.crt

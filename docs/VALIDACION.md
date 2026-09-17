@@ -1,73 +1,48 @@
-# Validación · Ahorra+ 3.1
+# Validación · Ahorra+ 4.0
 
-Fecha: 16 de septiembre de 2026.
+Fecha: 17 de septiembre de 2026.
 
 ## Resultado
 
-- Compilación React de producción: correcta.
-- `npm test`: 28 pruebas aprobadas, 0 fallos.
-- `npm run test:embedded`: integración API + SQL aprobada.
-- Motor usado en la prueba SQL: PostgreSQL 18.3 (PGlite 0.5.8).
-- Producción configurada para Node.js, controlador `pg` y PostgreSQL 17 mediante Docker.
+- `npm run build`: compilación React/PWA correcta; 40 módulos y 12 recursos de precaché.
+- `npm test`: **41 pruebas aprobadas, 0 fallos**.
+- `npm run test:embedded`: **1 integración API + SQL aprobada**.
+- Supabase CLI **2.117.0** instalada y ejecutada; `supabase init` generó la configuración inicial. Se comprobaron las opciones de `link` y `db push` con esta versión.
+- La CLI pudo leer la configuración en `migration list --local`, pero no conectar al puerto 54322 porque no hay un servicio Supabase local ejecutándose. No se ejecutó una migración en un proyecto remoto.
 
-## Cobertura
+## Verificaciones nuevas
 
-- Importes exactos en centavos, validación de fechas y saldos negativos.
-- Compatibilidad de respaldos originales, v2 y v3; importación sin duplicados y detección de IDs en conflicto.
-- 150 USD → 8,865 DOP con tasa 59.10; cambio de vuelta a 150 USD sin modificar el original.
-- EUR y MXN; monedas mixtas, metas, cambios de tasa y cantidades pequeñas.
-- Primera quincena hasta el 15; segunda desde el 16 e inclusión de los días 28, 29, 30 y 31.
-- Creación de cuenta, inicio y cierre de sesión a través de la interfaz React compilada y la API real.
-- Usuario A sin acceso al historial del usuario B; mismo ID de movimiento permitido en cuentas diferentes.
-- Cookies HttpOnly/SameSite, tokens y contraseñas almacenados como hashes, sesión invalidada al salir.
-- Cambio de contraseña e invalidación de otras sesiones.
-- Cambio de nombre, idioma y foto en la API; rechazo de avatar SVG.
-- Traducción de la interfaz, formatos y preferencia de idioma guardada en la cuenta.
-- Protección de escrituras por origen y encabezado propio; SQL parametrizado.
-- Escrituras con revisión: dos peticiones concurrentes con la misma revisión producen un éxito y un conflicto.
-- Registro inválido rechazado sin perder el historial existente.
-- Persistencia de cuenta y movimientos al cerrar y reabrir el motor de base de datos en disco.
-- Perfil, sesión y movimientos conservados al reiniciar el servidor HTTP.
-- Consulta de tasas con proveedor simulado determinista; consulta separada de la confirmación de la conversión.
-- Errores de red y conflictos mostrados sin anunciar un guardado correcto.
-- Manifiesto e iconos PWA, precaché de interfaz y exclusión de `/api/` del service worker.
+- SQL de la migración real ejecutado dos veces sin perder datos; esquema privado y RLS en las once tablas, incluida la versión de esquema.
+- Roles `anon`, `authenticated` y `service_role` sin permiso para leer los datos privados.
+- Conexiones remotas con verificación TLS; una URL con `sslmode=disable` no desactiva esa verificación. Rechazo del puerto del pooler de transacciones. Mensajes de diagnóstico sin mostrar la cadena de conexión.
+- Traslado desde tablas en `public`, como la versión anterior, a `ahorra`, conservando saldo, monedas, revisión, nombre, idioma, foto, contraseña scrypt y sesión válida.
+- Credencial Gmail conservada y descifrada con la clave anterior; progreso de lectura conservado y bloqueo del trabajador anterior liberado.
+- Pagos y notificaciones conservados; un vencimiento procesado no vuelve a descontarse después de importar y ejecutar el trabajador.
+- Respaldo con un registro inválido revierte toda la importación, incluidas las cuentas insertadas previamente. Un destino con datos rechaza la importación sin sobrescribirlos.
+- Interfaz compilada: perfil → Cambiar moneda en ventana móvil simulada. Se cierra el panel de perfil antes del conversor, 150 USD se muestran como RD$8,865 con tasa de ejemplo 59.10, se guarda DOP sin alterar el importe original, se libera el desplazamiento y se vuelve a abrir el perfil.
 
-## Cobertura nueva en 3.1
+## Cobertura conservada
 
-- Interpretación de ingresos y gastos con moneda original, dos formatos decimales y fecha de recepción.
-- Correo no autorizado, falta de firma, falta de referencia, importe ambiguo, rechazo y pendiente no se aplican automáticamente.
-- Cifrado AES-GCM con vinculación por usuario y rechazo al descifrar para otra cuenta.
-- Revisión por vencimiento, pausa y reanudación, control de duplicados por mensaje y referencia, comprobación de conflicto de revisión del saldo.
-- Aislamiento de cuentas en actividad bancaria y al aprobar pendientes.
-- Confirmación manual, rechazo de una segunda aprobación, descarte, errores de conexión y desconexión sin borrar movimientos.
-- Panel de cuenta abierto desde el avatar, guardado de nombre, modo oscuro/claro y persistencia de apariencia en el dispositivo.
-- Configuración Gmail en interfaz, prueba de un aviso sin modificar saldo y desconexión.
+Importes en centavos, fechas, metas, monedas mixtas, registros mensuales por quincena, respaldos financieros, autenticación y aislamiento entre cuentas, cookies y hashes, nombre/foto/idioma, conflictos de edición, persistencia en disco y reinicio, servicio PWA sin cachear API, interpretación de correos bancarios, deduplicación, cifrado Gmail, pagos recurrentes y recuperación de vencimientos, pausas y revisión de duplicados, notificaciones y alerta persistente de RD$200 restantes sobre RD$5,000 de entradas.
 
-## Límites
+Las pruebas de interfaz también cubren apertura/cierre de Ajustes y del perfil, nombre largo, cambio de apariencia, ventana simulada de 320 px, teclado que reduce el área visible y alternativa accesible cuando `showModal` no está disponible.
 
-El entorno de ejecución no permite iniciar un servicio PostgreSQL nativo con un usuario del sistema diferente y no proporciona Docker. Se ejecutaron las consultas SQL y los flujos de API con PGlite, que contiene el motor PostgreSQL compilado a WebAssembly, y un adaptador de pruebas que serializa sus conexiones. La app entregada no usa ese adaptador en producción.
+## Límites de la verificación
 
-Quedan por comprobar en el equipo de destino el arranque de Docker Compose, la conexión del controlador `pg` al PostgreSQL nativo y el comportamiento con múltiples conexiones nativas. Se entrega `npm run test:db` para ejecutar la misma integración usando `TEST_DATABASE_URL`.
+La suite ejecutó SQL con **PostgreSQL 18.3 compilado a WebAssembly, PGlite 0.5.8**, mediante un adaptador de pruebas que serializa sus conexiones. La app de producción usa `pg` y la conexión de Supabase. No se dispuso de credenciales de tu proyecto: quedan pendientes la autenticación de la CLI, `db push` remoto, TLS real, permisos del propietario real, conexión por Supavisor y comportamiento con múltiples conexiones nativas. Tampoco se pudo ejecutar Docker Compose en este entorno.
 
-El navegador remoto disponible bloqueó las direcciones y archivos locales en esta conversación. La revisión visual, la instalación PWA del sistema operativo y la selección/recorte de una foto mediante el navegador requieren comprobación local. Las pruebas de interfaz usan JSDOM; no verifican la geometría visual ni el foco nativo de los diálogos.
+La integración nativa incluida se puede ejecutar con `TEST_DATABASE_URL` y `npm run test:db` en una base de pruebas vacía, nunca sobre los registros reales.
 
-La integración de Gmail usa transporte simulado: no se ha conectado una cuenta real de Google ni probado un aviso real del banco del usuario. El parser debe verificarse con el formato concreto antes de activar descuentos automáticos. Las cabeceras de autenticación usadas en las pruebas son ejemplos de las que devuelve Gmail.
+Las pruebas de interfaz usan JSDOM y no miden geometría visual ni prueban un teléfono físico. La instalación de la PWA, el foco nativo de los diálogos y la selección/recorte de foto requieren comprobación en el navegador de destino.
 
-La integración de tasas valida la respuesta esperada mediante un proveedor simulado. La disponibilidad de la fuente externa en el equipo del usuario depende de su conexión. Los fallos conservan las tasas guardadas.
+Gmail y el proveedor de tasas usan transportes simulados. No se ha leído correo real ni probado el formato del banco del usuario. Antes de activar gastos bancarios automáticos debe verificarse un aviso concreto desde la pantalla de configuración.
 
-## Comprobación local recomendada
+## Comprobación en tu equipo
 
-1. Ejecuta la configuración y `docker compose up -d --build --wait`.
-2. Crea dos cuentas. Registra 150 USD en una y comprueba que la otra no muestra ese movimiento.
-3. Selecciona DOP con tasa 59.10. Confirma que el saldo es 8,865 DOP. Vuelve a USD y verifica 150 USD.
-4. Añade una entrada el 15 y un gasto el 16 de un mes pasado. En Registro mensual verifica la separación de quincenas.
-5. Cambia tu nombre y foto y alterna Español/English. Cierra sesión y vuelve a entrar para comprobar la persistencia.
-6. Exporta un respaldo JSON e impórtalo en la misma cuenta: los duplicados idénticos deben omitirse.
-7. Reinicia los contenedores sin borrar el volumen. Comprueba que puedes iniciar sesión y recuperar los datos.
-8. Instala la PWA en Chrome/Edge y verifica su acceso directo.
-
-9. Pulsa la foto y comprueba el panel de cuenta, los tres modos de apariencia y su persistencia al recargar.
-10. En dimensiones de 320, 390 y 600 px, revisa navegación, tablas, contraste y formularios; prueba también un móvil real.
-11. Conecta Gmail con una contraseña de aplicación. Configura el remitente del banco y prueba un texto real anonimizado.
-12. Envía o recibe una alerta bancaria nueva y usa Revisar ahora. Comprueba el estado, moneda, fecha y efecto en el saldo antes de activar registro automático. Revisa dos veces: no debe duplicarse el movimiento.
-13. Deja el navegador cerrado y el servidor encendido: después de una hora, verifica la fecha de última revisión. Pausa la conexión y comprueba que no se aplican nuevos avisos.
+1. Sigue `docs/SUPABASE.md`, aplica la migración y ejecuta `npm run db:check`.
+2. Si vienes de la versión anterior, importa el respaldo completo antes de iniciar la app y conserva la clave Gmail.
+3. Ejecuta `npm start`, entra con tu cuenta y comprueba saldo, historial, pagos y perfil.
+4. Pulsa tu foto → Cambiar moneda; revisa la vista previa, confirma y vuelve a tu moneda original.
+5. Comprueba la conversión, el cierre del conversor y los paneles en un teléfono real, tanto en claro como en oscuro.
+6. Revisa Gmail y crea un pago de prueba en una cuenta de pruebas; reinicia y confirma que no se duplica.
+7. Instala o actualiza la PWA. Mantén Node en ejecución para acceder a tus datos y ejecutar las revisiones automáticas.

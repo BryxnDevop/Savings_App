@@ -1,0 +1,9 @@
+import { Icon } from './Icon';
+import { useI18n } from '../lib/i18n';
+import { dayDistance } from '../lib/planning';
+export function paymentTiming(date,today,t,locale){const days=dayDistance(date,today);return {days,tone:days<=1?'urgent':days<=7?'soon':'later',label:days<0?t('Pendiente de registrar','Awaiting registration'):days===0?t('Hoy','Today'):days===1?t('Mañana','Tomorrow'):days<=7?t(`En ${days} días`,`In ${days} days`):new Date(date+'T12:00:00').toLocaleDateString(locale,{day:'numeric',month:'long',...(date.slice(0,4)!==today.slice(0,4)?{year:'numeric'}:{})})};}
+export function UpcomingPayments({data,onManage,hidden=false}){
+ const {t,locale,money}=useI18n();if(!data)return null;
+ const items=data.items.filter(p=>p.enabled).slice(0,4);
+ return <section className="panel upcoming-panel"><div className="panel-heading"><div><p className="eyebrow">{t('TENLO PRESENTE','PLAN AHEAD')}</p><h2>{t('Próximos pagos','Upcoming payments')}</h2></div><button className="text-button" onClick={onManage}>{t('Gestionar pagos','Manage payments')}<Icon name="right" size={16}/></button></div>{items.length?<div className="upcoming-list">{items.map(p=>{const timing=paymentTiming(p.nextDue,data.today,t,locale);return <button key={p.id} className="upcoming-item" onClick={onManage}><span className={`due-dot ${timing.tone}`} aria-hidden="true"/><span><strong>{p.name}</strong><small className={timing.tone}>{p.lastError?t('Requiere revisión','Review needed'):timing.label}</small></span><b>{hidden?'••••••':money(p.amountCents,p.currency)}<small>{p.currency}</small></b></button>;})}</div>:<div className="upcoming-empty"><Icon name="repeat" size={24}/><p>{t('Netflix, internet, alquiler… programa tus pagos y deja que se registren solos.','Netflix, internet, rent… schedule your bills and let them record themselves.')}</p><button className="button secondary" onClick={onManage}>{t('Crear un pago','Create a payment')}</button></div>}</section>;
+}

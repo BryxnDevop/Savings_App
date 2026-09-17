@@ -17,6 +17,12 @@ export function I18nProvider({ children }) {
 export const useI18n = () => useContext(Context);
 export const categoryName = (key, t) => t(...({ savings: ['Ahorro','Savings'], salary:['Salario','Salary'], extra:['Ingreso extra','Extra income'], food:['Alimentación','Food'], home:['Hogar','Home'], transport:['Transporte','Transport'], leisure:['Ocio','Leisure'], health:['Salud','Health'], other:['Otros','Other'] }[key] || ['Otros','Other']));
 const ERRORS = {
+  INVALID_RECURRING: ['Revisa el nombre, importe, moneda, frecuencia y fecha del pago.', 'Check the payment name, amount, currency, frequency and date.'],
+  RECURRING_PAST_DATE: ['El primer pago debe ser hoy o una fecha futura.', 'The first payment must be today or a future date.'],
+  RECURRING_NOT_DUE: ['Este pago está pausado o todavía no vence. Actualiza la lista.', 'This payment is paused or not due yet. Refresh the list.'],
+  RECURRING_LIMIT: ['Puedes mantener hasta 100 programaciones. Elimina las que ya no uses.', 'You can keep up to 100 schedules. Delete those you no longer use.'],
+  INVALID_NOTIFICATION: ['No se pudo actualizar este aviso. Vuelve a cargar la lista.', 'Could not update this notice. Reload the list.'],
+
   MAIL_KEY_MISSING: ['Falta la clave de cifrado del servidor. Ejecuta la configuración y reconstruye la app.', 'Server encryption key is missing. Run setup and rebuild the app.'],
   MAIL_INVALID_SETTINGS: ['Revisa el correo, los remitentes y las etiquetas de lectura.', 'Check the email, senders and reading labels.'],
   MAIL_APP_PASSWORD: ['Usa la contraseña de aplicación de Google de 16 letras.', 'Use the 16-letter Google app password.'],
@@ -29,7 +35,7 @@ const ERRORS = {
   MAIL_WALLET_LIMIT: ['El movimiento supera los límites del registro. Revisa los importes y las tasas.', 'The movement exceeds ledger limits. Check amounts and rates.'],
 
   NETWORK_ERROR: ['No hay conexión con el servidor. El cambio no está confirmado; vuelve a conectar y revisa tus datos antes de repetirlo.', 'Cannot reach the server. The change is unconfirmed; reconnect and check your data before retrying.'],
-  DATABASE_UNAVAILABLE: ['PostgreSQL no está disponible. No se confirmó el cambio. Vuelve a intentarlo cuando se restablezca la conexión.', 'PostgreSQL is unavailable. The change was not confirmed. Try again when the connection is restored.'],
+  DATABASE_UNAVAILABLE: ['Supabase no está disponible. No se confirmó el cambio. Vuelve a intentarlo cuando se restablezca la conexión.', 'Supabase is unavailable. The change was not confirmed. Try again when the connection is restored.'],
   UNAUTHORIZED: ['Tu sesión terminó. Inicia sesión de nuevo.', 'Your session has ended. Please sign in again.'],
   INVALID_CREDENTIALS: ['Correo o contraseña incorrectos.', 'Incorrect email or password.'],
   ACCOUNT_EXISTS: ['Ese correo ya tiene una cuenta. Inicia sesión.', 'That email already has an account. Please sign in.'],

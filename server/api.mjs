@@ -1,3 +1,5 @@
+import { createRecurringService } from './recurring.mjs';
+import { notificationFeed, markRead } from './notifications.mjs';
 import { createMailService } from './mail.mjs';
 import { randomUUID } from 'node:crypto';
 import { newWallet, readWallet, writeWallet } from './db.mjs';
@@ -21,8 +23,9 @@ async function body(req) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw fail('INVALID_JSON');
   return value;
 }
-export function createApi(pool, { origins, rateFetch = fetch, mailService }) {
+export function createApi(pool, { origins, rateFetch = fetch, mailService, recurringService }) {
   const mail = mailService || createMailService(pool);
+  const recurring = recurringService || createRecurringService(pool);
   const allowed = new Set(origins);
   const hosts = new Set(origins.map(o => new URL(o).host));
   const secure = new URL(origins[0]).protocol === 'https:';
@@ -43,7 +46,7 @@ export function createApi(pool, { origins, rateFetch = fetch, mailService }) {
       if (req.headers['sec-fetch-site'] === 'cross-site') throw fail('FORBIDDEN_ORIGIN', 403);
       if (!['GET', 'HEAD'].includes(req.method) && req.headers['x-ahorra-request'] !== '1') throw fail('FORBIDDEN_ORIGIN', 403);
       if (path === '/api/health' && req.method === 'GET') {
-        await pool.query('SELECT 1'); send(res, 200, { ok: true, storage: 'postgresql' }); return true;
+        await pool.query('SELECT 1'); send(res, 200, { ok: true, storage: 'supabase' }); return true;
       }
       if (path === '/api/auth/register' && req.method === 'POST') {
         rateLimit(req);
@@ -54,7 +57,7 @@ export function createApi(pool, { origins, rateFetch = fetch, mailService }) {
         const id = randomUUID(); const client = await pool.connect(); let token;
         try {
           await client.query('BEGIN');
-          await client.query('INSERT INTO ahorra_users(id,email,password_hash,name,language) VALUES($1,$2,$3,$4,$5)', [id, email, hash, profile.name, profile.language]);
+          await client.query('INSERT INTO ahorra.ahorra_users(id,email,password_hash,name,language) VALUES($1,$2,$3,$4,$5)', [id, email, hash, profile.name, profile.language]);
           await newWallet(client, id);
           token = await createSession(client, id);
           await client.query('COMMIT');
@@ -65,17 +68,23 @@ export function createApi(pool, { origins, rateFetch = fetch, mailService }) {
       if (path === '/api/auth/login' && req.method === 'POST') {
         rateLimit(req);
         const input = await body(req); const email = emailAddress(input.email);
-        const { rows: [user] } = await pool.query('SELECT * FROM ahorra_users WHERE email=$1', [email]);
+        const { rows: [user] } = await pool.query('SELECT * FROM ahorra.ahorra_users WHERE email=$1', [email]);
         if (!(await verifyPassword(input.password, user?.password_hash))) throw fail('INVALID_CREDENTIALS', 401);
         const token = await createSession(pool, user.id);
         const { password_hash, created_at, ...profile } = user;
         send(res, 200, { user: profile }, { 'Set-Cookie': cookie(token, secure) }); return true;
       }
       if (path === '/api/auth/logout' && req.method === 'POST') {
-        await pool.query('DELETE FROM ahorra_sessions WHERE token_hash=$1', [tokenHash(cookieToken(req))]);
+        await pool.query('DELETE FROM ahorra.ahorra_sessions WHERE token_hash=$1', [tokenHash(cookieToken(req))]);
         send(res, 200, { ok: true }, { 'Set-Cookie': cookie('', secure, true) }); return true;
       }
       const user = await authenticate(pool, req);
+      if(path==='/api/recurring' && req.method==='GET'){send(res,200,await recurring.list(user.id));return true;}
+      if(path==='/api/recurring' && req.method==='POST'){send(res,201,await recurring.save(user.id,await body(req)));return true;}
+      const schedule=path.match(/^\/api\/recurring\/([0-9a-f-]{36})(\/action)?$/);
+      if(schedule && req.method===(schedule[2]?'POST':'PUT')){const input=await body(req);send(res,200,schedule[2]?await recurring.action(user.id,schedule[1],input):await recurring.save(user.id,input,schedule[1]));return true;}
+      if(path==='/api/notifications' && req.method==='GET'){await recurring.reminders(user.id);send(res,200,await notificationFeed(pool,user.id));return true;}
+      if(path==='/api/notifications/read' && req.method==='POST'){send(res,200,await markRead(pool,user.id,await body(req)));return true;}
       if (path === '/api/mail' && req.method === 'GET') { send(res,200,await mail.status(user.id));return true; }
       if (path === '/api/mail/connect' && req.method === 'POST') { rateLimit(req);send(res,200,await mail.connect(user.id,await body(req)));return true; }
       if (path === '/api/mail/settings' && req.method === 'PUT') { send(res,200,await mail.settings(user.id,await body(req)));return true; }
@@ -86,7 +95,7 @@ export function createApi(pool, { origins, rateFetch = fetch, mailService }) {
       if (path === '/api/auth/me' && req.method === 'GET') { send(res, 200, { user }); return true; }
       if (path === '/api/profile' && req.method === 'PATCH') {
         const fields = profileFields(await body(req));
-        const { rows: [updated] } = await pool.query('UPDATE ahorra_users SET name=COALESCE($2,name),language=COALESCE($3,language),avatar=COALESCE($4,avatar) WHERE id=$1 RETURNING id,email,name,language,avatar', [user.id, fields.name ?? null, fields.language ?? null, fields.avatar ?? null]);
+        const { rows: [updated] } = await pool.query('UPDATE ahorra.ahorra_users SET name=COALESCE($2,name),language=COALESCE($3,language),avatar=COALESCE($4,avatar) WHERE id=$1 RETURNING id,email,name,language,avatar', [user.id, fields.name ?? null, fields.language ?? null, fields.avatar ?? null]);
         send(res, 200, { user: updated }); return true;
       }
       if (path === '/api/auth/password' && req.method === 'POST') {
@@ -95,10 +104,10 @@ export function createApi(pool, { origins, rateFetch = fetch, mailService }) {
         const client = await pool.connect();
         try {
           await client.query('BEGIN');
-          const { rows: [row] } = await client.query('SELECT password_hash FROM ahorra_users WHERE id=$1 FOR UPDATE', [user.id]);
+          const { rows: [row] } = await client.query('SELECT password_hash FROM ahorra.ahorra_users WHERE id=$1 FOR UPDATE', [user.id]);
           if (!(await verifyPassword(input.currentPassword, row.password_hash))) throw fail('INVALID_CREDENTIALS', 401);
-          await client.query('UPDATE ahorra_users SET password_hash=$2 WHERE id=$1', [user.id, next]);
-          await client.query('DELETE FROM ahorra_sessions WHERE user_id=$1 AND token_hash<>$2', [user.id, tokenHash(cookieToken(req))]);
+          await client.query('UPDATE ahorra.ahorra_users SET password_hash=$2 WHERE id=$1', [user.id, next]);
+          await client.query('DELETE FROM ahorra.ahorra_sessions WHERE user_id=$1 AND token_hash<>$2', [user.id, tokenHash(cookieToken(req))]);
           await client.query('COMMIT');
         } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
         send(res, 200, { ok: true }); return true;
@@ -106,7 +115,7 @@ export function createApi(pool, { origins, rateFetch = fetch, mailService }) {
       if (path === '/api/state' && req.method === 'GET') { send(res, 200, await readWallet(pool, user.id)); return true; }
       if (path === '/api/state' && req.method === 'PUT') { send(res, 200, await writeWallet(pool, user.id, await body(req))); return true; }
       if (path === '/api/rates' && req.method === 'GET') {
-        const { rows: [cached] } = await pool.query("SELECT payload FROM ahorra_rate_cache WHERE id=1 AND fetched_at>now()-interval '1 hour'");
+        const { rows: [cached] } = await pool.query("SELECT payload FROM ahorra.ahorra_rate_cache WHERE id=1 AND fetched_at>now()-interval '1 hour'");
         if (cached) { send(res, 200, cached.payload); return true; }
         let quote;
         try {
@@ -114,7 +123,7 @@ export function createApi(pool, { origins, rateFetch = fetch, mailService }) {
           const raw = await upstream.json();
           if (!upstream.ok || raw.result !== 'success' || raw.base_code !== 'USD' || !Number.isFinite(raw.time_last_update_unix)) throw new Error();
           quote = { rates: validateRates(raw.rates), rateInfo: { source: 'ExchangeRate-API', date: new Date(raw.time_last_update_unix * 1000).toISOString() } };
-          await pool.query('INSERT INTO ahorra_rate_cache(id,payload) VALUES(1,$1) ON CONFLICT(id) DO UPDATE SET payload=EXCLUDED.payload,fetched_at=now()', [JSON.stringify(quote)]);
+          await pool.query('INSERT INTO ahorra.ahorra_rate_cache(id,payload) VALUES(1,$1) ON CONFLICT(id) DO UPDATE SET payload=EXCLUDED.payload,fetched_at=now()', [JSON.stringify(quote)]);
         } catch { throw fail('RATES_UNAVAILABLE', 503); }
         send(res, 200, quote); return true;
       }
