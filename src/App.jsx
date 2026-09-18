@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { RecurringPayments } from './components/RecurringPayments';
 import { UpcomingPayments } from './components/UpcomingPayments';
 import { NotificationCenter, LowBalanceAlert } from './components/Notifications';
@@ -12,7 +12,7 @@ import { AuthScreen } from './components/AuthScreen';
 import { EntryForm } from './components/EntryForm';
 import { AccountDrawer } from './components/AccountDrawer';
 import { MailSettings } from './components/MailSettings';
-import { ThemePicker } from './lib/theme';
+import { ThemePicker, useTheme } from './lib/theme';
 import { ProfileForm } from './components/ProfileForm';
 import { MonthlyRegister } from './components/MonthlyRegister';
 import { RateEditor } from './components/RateEditor';
@@ -30,6 +30,8 @@ function download(text, filename, type = 'application/json') {
 export default function App() {
   const { t,error,setLanguage }=useI18n();
   const [user,setUser]=useState(null);const [snapshot,setSnapshot]=useState(null);const [loading,setLoading]=useState(true);const [serviceError,setServiceError]=useState('');const [busy,setBusy]=useState(false);
+  const {setAuthenticated}=useTheme();
+  useLayoutEffect(()=>{setAuthenticated(!!user&&!!snapshot);},[user,snapshot,setAuthenticated]);
   const saving=useRef(false);const epoch=useRef(0);const pwa=usePwa();
   function expired(){epoch.current++;setUser(null);setSnapshot(null);setServiceError('');}
   async function loadSession(knownUser){

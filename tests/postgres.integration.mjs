@@ -18,8 +18,8 @@ test('API + SQL: cuentas, sesiones, aislamiento, perfil, revisión concurrente, 
     const a=client(),b=client(),guest=client();
     assert.equal((await guest.request('/state')).status,401);
     const suffix=randomUUID();const emailA=`a-${suffix}@test.invalid`;const emailB=`b-${suffix}@test.invalid`;const password='Very-long-test-password-58';
-    const registered=await a.request('/auth/register','POST',{email:emailA,password,name:'Ana',language:'es'});assert.equal(registered.status,201);ids.push(registered.body.user.id);assert.match(registered.headers.get('set-cookie'),/HttpOnly/);assert.match(registered.headers.get('set-cookie'),/SameSite=Strict/);
-    const second=await b.request('/auth/register','POST',{email:emailB,password,name:'Ben',language:'en'});assert.equal(second.status,201);ids.push(second.body.user.id);
+    const registered=await a.request('/auth/register','POST',{email:emailA,password,name:'Ana',language:'es'});assert.equal(registered.status,201);ids.push(registered.body.user.id);assert.equal(registered.headers.get('set-cookie'),null);assert.equal((await a.request('/state')).status,401);const logged=await a.request('/auth/login','POST',{email:emailA,password});assert.equal(logged.status,200);assert.match(logged.headers.get('set-cookie'),/HttpOnly/);assert.match(logged.headers.get('set-cookie'),/SameSite=Strict/);
+    const second=await b.request('/auth/register','POST',{email:emailB,password,name:'Ben',language:'en'});assert.equal(second.status,201);ids.push(second.body.user.id);assert.equal((await b.request('/auth/login','POST',{email:emailB,password})).status,200);
     const initial=(await a.request('/state')).body;assert.equal(initial.revision,0);assert.equal(initial.ledger.movements.length,0);
     const ledger={...emptyLedger(),currency:'DOP',goal:{name:'Viaje',targetCents:30000,currency:'USD'},movements:[{id:'shared-id',type:'income',amountCents:15000,currency:'USD',reason:"Ahorro ' ; SELECT 1; --",date:'2026-04-15',note:'',category:'savings'}]};
     const saved=await a.request('/state','PUT',{revision:0,ledger});assert.equal(saved.status,200);assert.equal(saved.body.revision,1);

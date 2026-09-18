@@ -1,1 +1,3 @@
-try{var theme=localStorage.getItem('ahorra_theme');var dark=theme==='dark'||(theme!=='light'&&matchMedia('(prefers-color-scheme: dark)').matches);document.documentElement.dataset.theme=dark?'dark':'light';document.documentElement.style.colorScheme=dark?'dark':'light';}catch(e){}
+// Start and authentication are always light, before React or session lookup.
+document.documentElement.dataset.theme='light';
+document.documentElement.style.colorScheme='light';

@@ -1,20 +1,31 @@
-# Validación · Ahorra+ 4.0
+# Validación · Ahorra+ 4.1
 
-Fecha: 17 de septiembre de 2026.
+Fecha: 18 de septiembre de 2026.
 
 ## Resultado
 
-- `npm run build`: compilación React/PWA correcta; 40 módulos y 12 recursos de precaché.
-- `npm test`: **41 pruebas aprobadas, 0 fallos**.
+- `npm run build`: compilación React/PWA correcta; 40 módulos y 13 recursos de precaché.
+- `npm test`: **47 pruebas aprobadas, 0 fallos**.
 - `npm run test:embedded`: **1 integración API + SQL aprobada**.
 - Supabase CLI **2.117.0** instalada y ejecutada; `supabase init` generó la configuración inicial. Se comprobaron las opciones de `link` y `db push` con esta versión.
 - La CLI pudo leer la configuración en `migration list --local`, pero no conectar al puerto 54322 porque no hay un servicio Supabase local ejecutándose. No se ejecutó una migración en un proyecto remoto.
 
-## Verificaciones nuevas
+## Verificaciones de esta entrega
+
+- Registro sin cookie ni fila de sesión; el usuario no accede a `/state` hasta iniciar sesión. La interfaz muestra el login con el correo conservado y la contraseña vacía.
+- Tema claro en entrada, registro y login, incluso con sistema oscuro o preferencia anterior oscura. Dashboard claro por defecto y modo oscuro opcional; cerrar sesión recupera el blanco.
+- Handler de producción para Vercel probado con servidor HTTP, rutas reescritas, cuerpo de solicitud previamente parseado, errores JSON, cookies Secure/HttpOnly y bloqueo de orígenes ajenos.
+- Nueva instancia del handler conserva la sesión y los movimientos desde SQL. Cargar el estado procesa pagos vencidos sin temporizador; cron no repite el mismo vencimiento.
+- El endpoint de tareas rechaza llamadas sin secreto antes de abrir la base de datos.
+- Revisión manual de Gmail completada antes de responder, con transporte simulado. No queda en una promesa separada después de terminar la función.
+- Pool reducido para Vercel, soporte de puerto 6543 y certificado PEM por variable, manteniendo verificación TLS.
+- `vercel.json` incluye función API, rutas y caché privada, sin cron horario que bloquee un despliegue Hobby.
+
+## Cobertura anterior conservada
 
 - SQL de la migración real ejecutado dos veces sin perder datos; esquema privado y RLS en las once tablas, incluida la versión de esquema.
 - Roles `anon`, `authenticated` y `service_role` sin permiso para leer los datos privados.
-- Conexiones remotas con verificación TLS; una URL con `sslmode=disable` no desactiva esa verificación. Rechazo del puerto del pooler de transacciones. Mensajes de diagnóstico sin mostrar la cadena de conexión.
+- Conexiones remotas con verificación TLS; una URL con `sslmode=disable` no desactiva esa verificación. Rechazo del puerto del pooler de transacciones en modo local; admitido en Vercel. Mensajes de diagnóstico sin mostrar la cadena de conexión.
 - Traslado desde tablas en `public`, como la versión anterior, a `ahorra`, conservando saldo, monedas, revisión, nombre, idioma, foto, contraseña scrypt y sesión válida.
 - Credencial Gmail conservada y descifrada con la clave anterior; progreso de lectura conservado y bloqueo del trabajador anterior liberado.
 - Pagos y notificaciones conservados; un vencimiento procesado no vuelve a descontarse después de importar y ejecutar el trabajador.
@@ -37,9 +48,15 @@ Las pruebas de interfaz usan JSDOM y no miden geometría visual ni prueban un te
 
 Gmail y el proveedor de tasas usan transportes simulados. No se ha leído correo real ni probado el formato del banco del usuario. Antes de activar gastos bancarios automáticos debe verificarse un aviso concreto desde la pantalla de configuración.
 
+## Límites específicos de Vercel
+
+No se publicó esta versión en una cuenta Vercel ni se ejecutó `vercel build` vinculado a un proyecto. La prueba reproduce el contrato HTTP del adaptador, pero no equivale a una ejecución en infraestructura Vercel ni comprueba sus logs reales. El archivo Cron no se ejecutó contra un Supabase real; necesita extensiones, URL y secretos del usuario. Deben validarse `/api/health`, el registro/login y la programación después del despliegue siguiendo `docs/VERCEL.md`.
+
+La revisión visual sigue sin una prueba en teléfono real; JSDOM no mide geometría. El código se verificó funcionalmente y se preservaron los estilos adaptables.
+
 ## Comprobación en tu equipo
 
-1. Sigue `docs/SUPABASE.md`, aplica la migración y ejecuta `npm run db:check`.
+1. Para Vercel sigue `docs/VERCEL.md`. Para ejecución local sigue `docs/SUPABASE.md`, aplica la migración y ejecuta `npm run db:check`.
 2. Si vienes de la versión anterior, importa el respaldo completo antes de iniciar la app y conserva la clave Gmail.
 3. Ejecuta `npm start`, entra con tu cuenta y comprueba saldo, historial, pagos y perfil.
 4. Pulsa tu foto → Cambiar moneda; revisa la vista previa, confirma y vuelve a tu moneda original.

@@ -12,18 +12,28 @@ export const send = (res, status, body, headers = {}) => {
 };
 async function body(req) {
   if (!req.headers['content-type']?.startsWith('application/json')) throw fail('JSON_REQUIRED', 415);
-  let size = 0; const chunks = [];
-  for await (const chunk of req) {
-    size += chunk.length;
-    if (size > 10 * 1024 * 1024) throw fail('FILE_TOO_LARGE', 413);
-    chunks.push(chunk);
-  }
+  const limit = process.env.VERCEL ? 4 * 1024 * 1024 : 10 * 1024 * 1024;
   let value;
-  try { value = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw fail('INVALID_JSON'); }
+  // Vercel may parse the stream before invoking the handler.
+  if (req.body !== undefined) {
+    try {
+      const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+      if (Buffer.byteLength(raw) > limit) throw fail('FILE_TOO_LARGE',413);
+      value = JSON.parse(raw);
+    } catch(e) { if(e.status)throw e;throw fail('INVALID_JSON'); }
+  } else {
+    let size = 0; const chunks = [];
+    for await (const chunk of req) {
+      const bytes = Buffer.from(chunk); size += bytes.length;
+      if (size > limit) throw fail('FILE_TOO_LARGE',413);
+      chunks.push(bytes);
+    }
+    try { value = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw fail('INVALID_JSON'); }
+  }
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw fail('INVALID_JSON');
   return value;
 }
-export function createApi(pool, { origins, rateFetch = fetch, mailService, recurringService }) {
+export function createApi(pool, { origins, rateFetch = fetch, mailService, recurringService, serverless=false, requestIp=req=>req.socket?.remoteAddress }) {
   const mail = mailService || createMailService(pool);
   const recurring = recurringService || createRecurringService(pool);
   const allowed = new Set(origins);
@@ -31,7 +41,7 @@ export function createApi(pool, { origins, rateFetch = fetch, mailService, recur
   const secure = new URL(origins[0]).protocol === 'https:';
   const attempts = new Map();
   function rateLimit(req) {
-    const key = req.socket.remoteAddress;
+    const key = requestIp(req);
     const now = Date.now();
     const item = attempts.get(key);
     if (!item || item.until < now) attempts.set(key, { count: 1, until: now + 600000 });
@@ -54,16 +64,15 @@ export function createApi(pool, { origins, rateFetch = fetch, mailService, recur
         const email = emailAddress(input.email);
         const profile = profileFields({ name: input.name, language: input.language || 'es' });
         const hash = await hashPassword(input.password);
-        const id = randomUUID(); const client = await pool.connect(); let token;
+        const id = randomUUID(); const client = await pool.connect();
         try {
           await client.query('BEGIN');
           await client.query('INSERT INTO ahorra.ahorra_users(id,email,password_hash,name,language) VALUES($1,$2,$3,$4,$5)', [id, email, hash, profile.name, profile.language]);
           await newWallet(client, id);
-          token = await createSession(client, id);
           await client.query('COMMIT');
         } catch (e) { await client.query('ROLLBACK'); if (e.code === '23505') throw fail('ACCOUNT_EXISTS', 409); throw e; }
         finally { client.release(); }
-        send(res, 201, { user: { id, email, name: profile.name, language: profile.language, avatar: '' } }, { 'Set-Cookie': cookie(token, secure) }); return true;
+        send(res, 201, { created: true, user: { id, email, name: profile.name, language: profile.language, avatar: '' } }); return true;
       }
       if (path === '/api/auth/login' && req.method === 'POST') {
         rateLimit(req);
@@ -112,7 +121,7 @@ export function createApi(pool, { origins, rateFetch = fetch, mailService, recur
         } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
         send(res, 200, { ok: true }); return true;
       }
-      if (path === '/api/state' && req.method === 'GET') { send(res, 200, await readWallet(pool, user.id)); return true; }
+      if (path === '/api/state' && req.method === 'GET') { if(serverless)await recurring.tick({userId:user.id,maxBatches:1,batchSize:10,deadline:Date.now()+5000}); send(res, 200, await readWallet(pool, user.id)); return true; }
       if (path === '/api/state' && req.method === 'PUT') { send(res, 200, await writeWallet(pool, user.id, await body(req))); return true; }
       if (path === '/api/rates' && req.method === 'GET') {
         const { rows: [cached] } = await pool.query("SELECT payload FROM ahorra.ahorra_rate_cache WHERE id=1 AND fetched_at>now()-interval '1 hour'");

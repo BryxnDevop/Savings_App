@@ -1,12 +1,18 @@
-# Ahorra+ 4.0 · React, Supabase y PWA
+# Ahorra+ 4.1 · React, Supabase, Vercel y PWA
 
 La base de datos se aloja en **tu proyecto Supabase**. Ya no hace falta iniciar un contenedor PostgreSQL para utilizar la app. Se mantienen el servidor Node, las cuentas actuales, el registro mensual, Gmail, los pagos recurrentes, las notificaciones y el diseño adaptable.
 
 **Si ya usabas Ahorra+**, lee primero [Trasladar tus datos](docs/SUPABASE.md#trasladar-tus-datos-desde-ahorra-32). Conectar a una base vacía no copia los datos anteriores automáticamente.
 
+## Desplegar en Vercel
+
+Sigue **[docs/VERCEL.md](docs/VERCEL.md)**. Incluye la función `api/index.js`, las rutas, variables de entorno y el programador de revisiones. Selecciona como Root Directory la carpeta `ahorra-plus` que contiene `vercel.json`. Publicar solo `dist/` no incluye el backend.
+
+La pantalla de entrada y el login usan tema blanco/claro. Crear una cuenta regresa al login sin iniciar sesión; el usuario debe escribir su contraseña para acceder al dashboard. El modo oscuro permanece disponible dentro de la cuenta.
+
 ## Preparación rápida en Windows
 
-Instala Node.js 22.12 o superior (se recomienda Node 24 LTS). Abre PowerShell en esta carpeta:
+Instala Node.js 24 LTS. Abre PowerShell en esta carpeta:
 
 ```powershell
 npm ci
@@ -42,7 +48,7 @@ Los datos se guardan en el esquema privado `ahorra` de Supabase y están asociad
 
 Supabase usa PostgreSQL internamente; ahora lo administra Supabase. La app sigue utilizando **su propio login con contraseñas scrypt y sesiones**, conservando las cuentas al importar el respaldo completo. Esta edición no utiliza Supabase Auth. No necesitas claves `anon`, `service_role` ni variables `VITE_SUPABASE_*`.
 
-Gmail se revisa aproximadamente cada hora y los pagos recurrentes cada minuto desde el servidor Node. **El servidor debe estar encendido y conectado a Supabase** aunque cierres la PWA. Supabase por sí solo no ejecuta estos trabajadores. Para funcionar 24/7, aloja también el servidor en un servicio que mantenga procesos activos.
+En ejecución local, Gmail se revisa aproximadamente cada hora y los pagos recurrentes cada minuto desde el servidor Node. En Vercel usa el programador descrito en docs/VERCEL.md. **El servidor debe estar encendido y conectado a Supabase** aunque cierres la PWA. En esta modalidad local, Supabase por sí solo no ejecuta estos trabajadores. Para funcionar 24/7, aloja también el servidor en un servicio que mantenga procesos activos.
 
 Consulta [docs/FUNCIONES.md](docs/FUNCIONES.md) para configurar Gmail, pagos recurrentes, notificaciones, monedas, idioma y perfil. Los avisos son internos; no se ha agregado push del sistema operativo.
 

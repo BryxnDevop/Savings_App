@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+.git
+node_modules
+.vercel
+supabase/.temp
+supabase/.branches
+backups
+tests
+certs/*.crt
+*.zip
+*.log

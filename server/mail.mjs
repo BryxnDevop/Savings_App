@@ -30,7 +30,7 @@ async function addMovement(client,userId,event,{manual=false}={}) {
   await reconcileAlerts(client,userId,{version:3,currency:wallet.currency,rates:wallet.rates,rateInfo:wallet.rate_info,goal:wallet.goal,movements:[...rows.map(({amount_cents,...m})=>({...m,amountCents:Number(amount_cents)})),movement]});
   return '';
 }
-export function createMailService(pool,{key=process.env.MAIL_ENCRYPTION_KEY,transport=gmailTransport}={}) {
+export function createMailService(pool,{key=process.env.MAIL_ENCRYPTION_KEY,transport=gmailTransport,synchronous=false}={}) {
   const crypt=mailCrypto(key);let active=false;let stopped=false;let timer;
   async function status(userId){
     const {rows:[c]}=await pool.query('SELECT settings,enabled,last_check,next_check,last_error,lease_until,connected_at FROM ahorra.ahorra_mail_connections WHERE user_id=$1',[userId]);
@@ -73,12 +73,12 @@ export function createMailService(pool,{key=process.env.MAIL_ENCRYPTION_KEY,tran
       await client.query('COMMIT');
     }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
   }
-  async function tick(){
+  async function tick({userId,maxAccounts=5,deadline=Infinity}={}){
     if(active||stopped||!crypt)return;active=true;
     try{
-      for(let i=0;i<5&&!stopped;i++){
+      for(let i=0;i<maxAccounts&&!stopped&&Date.now()<deadline;i++){
         const token=randomUUID();
-        const {rows:[c]}=await pool.query(`UPDATE ahorra.ahorra_mail_connections SET lease_token=$1,lease_until=now()+interval '10 minutes' WHERE user_id=(SELECT user_id FROM ahorra.ahorra_mail_connections WHERE enabled=true AND next_check<=now() AND (lease_until IS NULL OR lease_until<now()) ORDER BY next_check FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING *`,[token]);
+        const {rows:[c]}=await pool.query(`UPDATE ahorra.ahorra_mail_connections SET lease_token=$1,lease_until=now()+interval '10 minutes' WHERE user_id=(SELECT user_id FROM ahorra.ahorra_mail_connections WHERE ($2::uuid IS NULL OR user_id=$2) AND enabled=true AND next_check<=now() AND (lease_until IS NULL OR lease_until<now()) ORDER BY next_check FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING *`,[token,userId||null]);
         if(!c)break;
         try{
           const password=crypt.decrypt(c.secret,c.user_id);
@@ -92,6 +92,7 @@ export function createMailService(pool,{key=process.env.MAIL_ENCRYPTION_KEY,tran
   async function check(userId){
     const {rows}=await pool.query("UPDATE ahorra.ahorra_mail_connections SET next_check=now() WHERE user_id=$1 AND enabled=true AND (lease_until IS NULL OR lease_until<now()) AND (last_check IS NULL OR last_check<now()-interval '1 minute') RETURNING user_id",[userId]);
     if(!rows.length)throw fail('MAIL_WAIT',409);
+    if(synchronous){await tick({userId,maxAccounts:1});return {queued:false,completed:true};}
     kick();return {queued:true};
   }
   async function review(userId,id,action){

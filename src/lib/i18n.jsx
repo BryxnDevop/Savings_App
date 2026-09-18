@@ -17,6 +17,9 @@ export function I18nProvider({ children }) {
 export const useI18n = () => useContext(Context);
 export const categoryName = (key, t) => t(...({ savings: ['Ahorro','Savings'], salary:['Salario','Salary'], extra:['Ingreso extra','Extra income'], food:['Alimentación','Food'], home:['Hogar','Home'], transport:['Transporte','Transport'], leisure:['Ocio','Leisure'], health:['Salud','Health'], other:['Otros','Other'] }[key] || ['Otros','Other']));
 const ERRORS = {
+  API_UNAVAILABLE: ['La API no respondió correctamente. Revisa el despliegue y las rutas /api en Vercel.', 'The API did not respond correctly. Check your deployment and /api routes in Vercel.'],
+  SERVER_CONFIGURATION: ['Falta configurar el servidor. Revisa DATABASE_URL y APP_ORIGIN en Vercel y vuelve a desplegar.', 'Server setup is incomplete. Check DATABASE_URL and APP_ORIGIN in Vercel and redeploy.'],
+  MIGRATION_REQUIRED: ['Faltan las tablas de Ahorra+. Aplica las migraciones de Supabase al proyecto configurado.', 'Ahorra+ tables are missing. Apply the Supabase migrations to the configured project.'],
   INVALID_RECURRING: ['Revisa el nombre, importe, moneda, frecuencia y fecha del pago.', 'Check the payment name, amount, currency, frequency and date.'],
   RECURRING_PAST_DATE: ['El primer pago debe ser hoy o una fecha futura.', 'The first payment must be today or a future date.'],
   RECURRING_NOT_DUE: ['Este pago está pausado o todavía no vence. Actualiza la lista.', 'This payment is paused or not due yet. Refresh the list.'],
@@ -51,7 +54,7 @@ const ERRORS = {
   INVALID_BACKUP: ['El archivo no es un respaldo válido de Ahorra+.', 'This file is not a valid Ahorra+ backup.'],
   IMPORT_CONFLICT: ['Un registro del archivo tiene el mismo ID y datos distintos. La importación se canceló para conservar tus registros.', 'A record has the same ID but different data. Import was cancelled to preserve your records.'],
   INVALID_LEDGER: ['Hay datos no válidos. Revisa los campos antes de guardar.', 'Some data is invalid. Check the fields before saving.'],
-  FILE_TOO_LARGE: ['El archivo supera los 10 MB.', 'The file exceeds 10 MB.'],
+  FILE_TOO_LARGE: ['La solicitud supera el límite del servidor (4 MB en Vercel). Usa un respaldo más pequeño.', 'The request exceeds the server limit (4 MB on Vercel). Use a smaller backup.'],
   AMOUNT_TOO_LARGE: ['La conversión supera el límite de importes. Revisa las tasas.', 'The conversion exceeds the amount limit. Check the rates.'],
   BUSY: ['Hay un guardado en curso. Espera a que termine.', 'A save is in progress. Please wait.'],
 };

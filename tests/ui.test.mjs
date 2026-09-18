@@ -22,13 +22,14 @@ before(async()=>{
 after(async()=>{server.closeAllConnections();await new Promise(r=>server.close(r));await pool.end();});
 const tick=()=>new Promise(r=>setTimeout(r,30));
 async function until(fn){for(let i=0;i<100;i++){if(fn())return;await tick();}assert.ok(fn(),'Timed out waiting for UI');}
-async function app({signedIn=true,ledger=emptyLedger(),name='Ana',mobile=false,legacyDialog=false}={}){
+async function app({signedIn=true,ledger=emptyLedger(),name='Ana',mobile=false,legacyDialog=false,systemDark=false,storedTheme}={}){
  let cookie='';let blockWrites=false;const errors=[];const email=`ui-${randomUUID()}@test.invalid`;const password='Test-password-safe-724';
  async function request(path,method='GET',body){const response=await fetch(origin+'/api'+path,{method,headers:{Origin:origin,'X-Ahorra-Request':'1',...(cookie?{Cookie:cookie}:{}),...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});const set=response.headers.get('set-cookie');if(set)cookie=set.split(';')[0];return{status:response.status,body:await response.json()};}
- if(signedIn){assert.equal((await request('/auth/register','POST',{email,password,name,language:'es'})).status,201);assert.equal((await request('/state','PUT',{revision:0,ledger})).status,200);}
+ if(signedIn){assert.equal((await request('/auth/register','POST',{email,password,name,language:'es'})).status,201);assert.equal((await request('/auth/login','POST',{email,password})).status,200);assert.equal((await request('/state','PUT',{revision:0,ledger})).status,200);}
  const virtualConsole=new VirtualConsole();virtualConsole.on('jsdomError',e=>{if(e.type!=='not-implemented')errors.push(e.message);});virtualConsole.on('error',(...a)=>errors.push(a.join(' ')));
  const dom=new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>',{url:origin,runScripts:'outside-only',pretendToBeVisual:true,virtualConsole,beforeParse(win){
-  win.matchMedia=()=>({matches:false,addEventListener(){},removeEventListener(){}});win.scrollTo=()=>{};win.AbortSignal=AbortSignal;
+  if(storedTheme)win.localStorage.setItem('ahorra_theme',storedTheme);
+  win.matchMedia=()=>({matches:systemDark,addEventListener(){},removeEventListener(){}});win.scrollTo=()=>{};win.AbortSignal=AbortSignal;
   win.HTMLDialogElement.prototype.showModal=function(){this.setAttribute('open','');};win.HTMLDialogElement.prototype.close=function(){this.removeAttribute('open');};
   if(legacyDialog){win.HTMLDialogElement.prototype.showModal=undefined;win.HTMLDialogElement.prototype.close=undefined;}
   if(mobile){Object.defineProperty(win,'innerWidth',{value:320});Object.defineProperty(win,'innerHeight',{value:640});const viewport=new win.EventTarget();viewport.height=640;viewport.offsetTop=0;Object.defineProperty(win,'visualViewport',{value:viewport});}
@@ -46,7 +47,7 @@ win.URL.createObjectURL=()=> 'blob:test';win.URL.revokeObjectURL=()=>{};
 
 test('Interfaz compilada: crear cuenta, cerrar sesión y volver a iniciar sin exponer el historial',async()=>{
  const a=await app({signedIn:false});try{
-  await a.click('Crear una cuenta');a.fill('input[name=name]','Nueva cuenta');a.fill('input[name=email]',a.email);a.fill('input[name=password]',a.password);a.fill('input[name=confirm]',a.password);await a.submit('.auth-shell form');await until(()=>!!a.doc.querySelector('.workspace'));
+  await a.click('Crear una cuenta');a.fill('input[name=name]','Nueva cuenta');a.fill('input[name=email]',a.email);a.fill('input[name=password]',a.password);a.fill('input[name=confirm]',a.password);await a.submit('.auth-shell form');await until(()=>!!a.doc.querySelector('.auth-success'));assert.equal(a.doc.querySelector('.workspace'),null);assert.equal((await a.request('/state')).status,401);assert.equal(a.doc.querySelector('input[name=email]').value,a.email);assert.equal(a.doc.querySelector('input[name=password]').value,'');a.fill('input[name=password]',a.password);await a.submit('.auth-shell form');await until(()=>!!a.doc.querySelector('.workspace'));
   await a.click('Ajustes');await a.click('Cerrar sesión');await until(()=>!!a.doc.querySelector('.auth-shell'));assert.equal(a.doc.querySelector('.balance-value'),null);
   a.fill('input[name=email]',a.email);a.fill('input[name=password]',a.password);await a.submit('.auth-shell form');await until(()=>!!a.doc.querySelector('.workspace'));assert.match(a.doc.body.textContent,/Nueva cuenta/i);assert.deepEqual(a.errors,[]);
  }finally{a.dom.window.close();}
@@ -153,5 +154,21 @@ test('Móvil: foto → Cambiar moneda convierte y guarda sin superponer paneles'
   a.fill('dialog select','DOP');await tick();assert.match(a.doc.querySelector('.rate-preview').textContent,/8,865/);await a.submit();await until(()=>!a.doc.querySelector('dialog'));
   const saved=(await a.request('/state')).body.ledger;assert.equal(saved.currency,'DOP');assert.equal(saved.movements[0].amountCents,15000);assert.equal(saved.movements[0].currency,'USD');assert.equal(a.doc.body.style.position,'');assert.equal(a.doc.getElementById('root').hasAttribute('aria-hidden'),false);
   await a.clickSelector('.profile-button');assert.match(a.doc.querySelector('[aria-label="Cambiar moneda"]').textContent,/DOP/);await a.clickSelector('.account-drawer .modal-close');assert.equal(a.doc.querySelector('.fatal-error'),null);assert.deepEqual(a.errors,[]);
+ }finally{a.dom.window.close();}
+});
+
+test('Tema: inicio blanco aunque el sistema o la preferencia anterior sean oscuros',async()=>{
+ for(const storedTheme of [undefined,'dark','system']) {
+  const a=await app({signedIn:false,systemDark:true,storedTheme});try{
+   assert.equal(a.doc.documentElement.dataset.theme,'light');
+   assert.equal(a.doc.documentElement.style.colorScheme,'light');
+   await a.click('Crear una cuenta');assert.equal(a.doc.documentElement.dataset.theme,'light');
+  }finally{a.dom.window.close();}
+ }
+});
+test('Tema: dashboard claro por defecto, oscuro opcional y login blanco al salir',async()=>{
+ const a=await app({systemDark:true});try{
+  assert.equal(a.doc.documentElement.dataset.theme,'light');await a.clickSelector('.profile-button');await a.click('Oscuro');assert.equal(a.doc.documentElement.dataset.theme,'dark');
+  await a.click('Cerrar sesión');await until(()=>!!a.doc.querySelector('.auth-shell'));assert.equal(a.doc.documentElement.dataset.theme,'light');assert.equal(a.dom.window.localStorage.getItem('ahorra_theme'),'dark');
  }finally{a.dom.window.close();}
 });

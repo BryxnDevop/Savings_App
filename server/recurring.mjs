@@ -80,14 +80,14 @@ export function createRecurringService(pool,{now=()=>new Date(),timeZone=process
   }catch(e){await client.query('ROLLBACK');throw e;}finally{client.release();}
   await reminders(userId);return list(userId);
  }
- async function tick(){
+ async function tick({userId,maxBatches=12,batchSize=100,deadline=Infinity}={}){
   if(running||stopped)return;running=true;
   try{
-   for(let batch=0;batch<12&&!stopped;batch++){
-    const {rows}=await pool.query("SELECT user_id,id FROM ahorra.ahorra_recurring WHERE enabled=true AND archived=false AND last_error='' AND next_due<=$1::date ORDER BY next_due,id LIMIT 100",[today()]);if(!rows.length)break;
-    for(const r of rows)if(!stopped)await execute(r.user_id,r.id,{automatic:true});
+   for(let batch=0;batch<maxBatches&&!stopped&&Date.now()<deadline;batch++){
+    const {rows}=await pool.query("SELECT user_id,id FROM ahorra.ahorra_recurring WHERE ($2::uuid IS NULL OR user_id=$2) AND enabled=true AND archived=false AND last_error='' AND next_due<=$1::date ORDER BY next_due,id LIMIT $3",[today(),userId||null,batchSize]);if(!rows.length)break;
+    for(const r of rows)if(!stopped&&Date.now()<deadline)await execute(r.user_id,r.id,{automatic:true});
    }
-   if(!stopped)await reminders();
+   if(!stopped&&Date.now()<deadline)await reminders(userId);
   }finally{running=false;}
  }
  const run=()=>tick().catch(()=>console.error('No se pudo completar la revisión de pagos recurrentes.'));

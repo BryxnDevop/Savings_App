@@ -17,7 +17,7 @@ export const gmailTransport = {
       try{return { mailbox, uidValidity:String(client.mailbox.uidValidity), lastUid:Math.max(0,client.mailbox.uidNext-1) };}finally{lock.release();}
     },30000);
   },
-  async scan(connection,password,consume) {
+  async scan(connection,password,consume,timeout = 120000) {
     return session(connection.settings.email,password,async client=>{
       const lock=await client.getMailboxLock(connection.mailbox,{readOnly:true});
       try {
@@ -44,6 +44,6 @@ export const gmailTransport = {
         }
         return {lastUid:uids.length>100?batch.at(-1):ceiling,more:uids.length>100};
       }finally{lock.release();}
-    });
+    },timeout);
   }
 };

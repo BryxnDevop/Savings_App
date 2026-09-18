@@ -1,10 +1,10 @@
 {
   "name": "ahorra-plus",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22.12.0"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
@@ -21,6 +21,7 @@
     "supabase": "supabase"
   },
   "dependencies": {
+    "@vercel/functions": "3.9.8",
     "imapflow": "2.0.5",
     "mailparser": "3.9.28",
     "pg": "8.23.0",

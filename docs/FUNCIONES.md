@@ -1,4 +1,6 @@
-# Uso de Ahorra+ 4.0
+# Uso de Ahorra+ 4.1
+
+> En Vercel, las revisiones automáticas requieren configurar el programador de `VERCEL.md`. Las frecuencias siguientes describen el servidor Node local.
 
 ## Gmail: revisión bancaria cada hora
 
@@ -83,7 +85,7 @@ Las copias **JSON** conservan movimientos, meta y tasas, pero no las programacio
 ## Panel de cuenta, modo oscuro y móvil
 
 - Pulsa tu foto/inicial en la esquina superior para abrir el panel deslizante. Incluye nombre, foto, idioma, apariencia, **Cambiar moneda**, contraseña, enlace a correo bancario y cierre de sesión.
-- En **Apariencia** elige **Claro**, **Oscuro** o **Sistema**. Se recuerda en ese navegador/dispositivo y también se aplica al inicio de sesión.
+- En **Apariencia** elige **Claro**, **Oscuro** o **Sistema**. Se recuerda para tu espacio dentro de la cuenta. La entrada y el login siempre se muestran en claro/blanco.
 - El escritorio mantiene su composición. Hasta 600 px se usa navegación inferior flotante, botón Registrar, campos cómodos para tocar y formularios tipo panel inferior. Respeta la preferencia de movimiento reducido.
 - `localhost` en tu teléfono apunta al propio teléfono, no a tu PC. Para acceder desde otro dispositivo necesitas una dirección de servidor accesible y HTTPS; consulta la sección de despliegue. El Compose inicial sigue limitado al ordenador local. Cambiar el tamaño del navegador permite probar la vista móvil en tu PC.
 

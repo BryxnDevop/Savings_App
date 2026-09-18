@@ -1,5 +1,7 @@
 # Conectar Ahorra+ a Supabase
 
+Para desplegar en **Vercel**, sigue primero [VERCEL.md](VERCEL.md). Esta guía describe la CLI, la conexión local y el traslado de datos.
+
 ## 1. Crear y elegir el proyecto
 
 Crea un proyecto propio en [Supabase](https://supabase.com/dashboard). Guarda su contraseña de base de datos. Para una instalación nueva, utiliza un proyecto vacío dedicado a Ahorra+.
@@ -16,7 +18,7 @@ npm run setup
 npx supabase --version
 ```
 
-Se incluye Supabase CLI **2.117.0**, fijada en `package.json` y `package-lock.json`. El proyecto requiere Node.js 22.12 o superior. `npm run setup` crea `.env` con una clave de cifrado aleatoria para Gmail si no existe; conserva la configuración que ya tengas.
+Se incluye Supabase CLI **2.117.0**, fijada en `package.json` y `package-lock.json`. El proyecto requiere Node.js 24 LTS. `npm run setup` crea `.env` con una clave de cifrado aleatoria para Gmail si no existe; conserva la configuración que ya tengas.
 
 No hace falta `supabase init`: ya existe `supabase/config.toml`. Tampoco hace falta `supabase start` para conectarte al proyecto alojado. La ruta de ejecución normal no depende de Docker Desktop.
 
