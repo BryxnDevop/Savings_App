@@ -69,9 +69,9 @@ test('Vercel: errores de configuración JSON y cron protegido antes de abrir la 
  assert.deepEqual(await request('/api/jobs'),{status:401,payload:{error:'UNAUTHORIZED'}});
  assert.deepEqual(await request('/api/health'),{status:503,payload:{error:'SERVER_CONFIGURATION'}});
 });
-test('Vercel: configuración incluye función API, caché privada y no impone cron incompatible con Hobby',async()=>{
+test('Vercel: configuración incluye función API, caché privada y cron diario compatible con Hobby',async()=>{
  const config=JSON.parse(await readFile(new URL('../vercel.json',import.meta.url)));
  assert.equal(config.outputDirectory,'dist');assert.ok(config.functions['api/index.js']);
- assert.ok(config.rewrites.some(r=>r.source==='/api/:path*'&&r.destination.startsWith('/api/index')));assert.equal(config.crons,undefined);
+ assert.ok(config.rewrites.some(r=>r.source==='/api/:path*'&&r.destination.startsWith('/api/index')));assert.deepEqual(config.crons,[{path:'/api/jobs',schedule:'0 12 * * *'}]);
  const entry=await readFile(new URL('../api/index.js',import.meta.url),'utf8');assert.match(entry,/attachDatabasePool/);
 });

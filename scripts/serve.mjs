@@ -8,6 +8,7 @@ import { createPool, checkSchema } from '../server/db.mjs';
 import { createRecurringService } from '../server/recurring.mjs';
 import { createMailService } from '../server/mail.mjs';
 import { createApi } from '../server/api.mjs';
+import { createPushService } from '../server/push.mjs';
 try { loadEnvFile(new URL('../.env', import.meta.url)); } catch(e) { if(e.code !== 'ENOENT') throw e; }
 
 const root = fileURLToPath(new URL('../dist/', import.meta.url));
@@ -25,9 +26,11 @@ let pool;
 try { pool = createPool(process.env.DATABASE_URL); await checkSchema(pool); } catch (e) { console.error('No se pudo conectar a Supabase. Ejecuta npm run db:check y revisa docs/SUPABASE.md. Código:', e.code || 'DB_ERROR'); if(pool) await pool.end(); process.exit(1); }
 const mailService = createMailService(pool);
 const recurringService = createRecurringService(pool);
-const api = createApi(pool, { origins, mailService, recurringService });
+const pushService = createPushService(pool,{subject:process.env.VAPID_SUBJECT||origin});
+const api = createApi(pool, { origins, mailService, recurringService, pushService });
 recurringService.start();
 mailService.start();
+const pushTimer=setInterval(()=>pushService.dispatchAll().catch(e=>console.error('No se pudieron enviar las notificaciones push:',e.code||e.message)),60000);pushTimer.unref();
 const server = createServer(async (req, res) => {
   if (await api(req, res)) return;
   if (!['GET', 'HEAD'].includes(req.method)) { res.writeHead(405, { Allow: 'GET, HEAD' }); res.end(); return; }
@@ -61,4 +64,4 @@ server.listen(appPort, appHost, () => {
   }
 });
 
-for (const signal of ['SIGINT','SIGTERM']) process.on(signal, () => { mailService.stop(); recurringService.stop(); server.close(async () => { await pool.end(); process.exit(0); }); server.closeIdleConnections(); });
+for (const signal of ['SIGINT','SIGTERM']) process.on(signal, () => { clearInterval(pushTimer);mailService.stop(); recurringService.stop(); server.close(async () => { await pool.end(); process.exit(0); }); server.closeIdleConnections(); });

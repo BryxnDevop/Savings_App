@@ -28,11 +28,12 @@ test('Alertas: 80%, saldo RD$200 de RD$5,000, cero entradas y meta Laptop a RD$8
  const goal=budgetStatus({...base,goal:{name:'Laptop',targetCents:4000000,currency:'DOP'},movements:[movement('income',3200000)]});assert.equal(goal.nearGoal,true);assert.equal(goal.remaining,800000);
  const fx=budgetStatus({...base,currency:'USD'});assert.equal(fx.warning,true);
 });
-test('SQL: vencimientos automáticos, reinicio, concurrencia, atraso y resolución sin cobro repetido',async()=>{
- const pool=await embeddedPool();try{await migrate(pool);const id=await user(pool),other=await user(pool);let now=new Date('2026-01-30T12:00:00Z');const service=()=>createRecurringService(pool,{now:()=>now});let worker=service();
+test('SQL: vencimientos automáticos, aviso desde 2 días antes, reinicio, concurrencia, atraso y resolución sin cobro repetido',async()=>{
+ const pool=await embeddedPool();try{await migrate(pool);const id=await user(pool),other=await user(pool);let now=new Date('2026-01-29T12:00:00Z');const service=()=>createRecurringService(pool,{now:()=>now});let worker=service();
  let list=await worker.save(id,payment);const schedule=list.items[0];assert.equal(list.items.length,1);assert.equal((await worker.list(other)).items.length,0);
- let feed=await notificationFeed(pool,id);assert.ok(feed.items.some(n=>n.kind==='payment_due'));assert.equal(feed.items.find(n=>n.kind==='payment_due').payload.amountCents,250000);
+ let feed=await notificationFeed(pool,id);assert.ok(feed.items.some(n=>n.kind==='payment_due'));assert.equal(feed.items.find(n=>n.kind==='payment_due').payload.amountCents,250000);assert.equal(feed.items.find(n=>n.kind==='payment_due').payload.daysUntil,2);
  await worker.tick();assert.equal((await readWallet(pool,id)).ledger.movements.length,0);
+ now=new Date('2026-01-30T12:00:00Z');await worker.tick();assert.equal((await readWallet(pool,id)).ledger.movements.length,0);
  now=new Date('2026-01-31T12:00:00Z');const old=await readWallet(pool,id);await Promise.all([worker.tick(),service().tick()]);let state=await readWallet(pool,id);assert.equal(state.ledger.movements.length,1);assert.equal(state.ledger.movements[0].date,'2026-01-31');assert.equal(state.ledger.movements[0].amountCents,250000);assert.equal(state.ledger.movements[0].type,'expense');assert.equal((await worker.list(id)).items[0].nextDue,'2026-02-28');
  await assert.rejects(writeWallet(pool,id,{revision:old.revision,ledger:old.ledger}),e=>e.message==='CONFLICT');
  worker=service();await worker.tick();assert.equal((await readWallet(pool,id)).ledger.movements.length,1,'worker restart does not repeat payment');
@@ -53,10 +54,10 @@ test('SQL: vencimientos automáticos, reinicio, concurrencia, atraso y resoluci�
 test('SQL: notificaciones persistentes, leídas sin duplicarse, saldo bajo reaparece y umbral se rearma',async()=>{
  const pool=await embeddedPool();try{await migrate(pool);const id=await user(pool),other=await user(pool);let state=await readWallet(pool,id);
  const ledger={...state.ledger,currency:'DOP',movements:[movement('income',500000,'income'),movement('expense',480000,'expense')]};await writeWallet(pool,id,{revision:state.revision,ledger});
- let feed=await notificationFeed(pool,id);assert.equal(feed.budget.low,true);assert.equal(feed.budget.balance,20000);assert.equal(feed.items.filter(n=>n.kind==='budget80').length,1);assert.equal(feed.items.filter(n=>n.kind==='budget_low').length,1);
- await assert.rejects(markRead(pool,other,{id:feed.items[0].id}),e=>e.message==='NOT_FOUND');await markRead(pool,id,{all:true});feed=await notificationFeed(pool,id);assert.equal(feed.unread,0);assert.equal(feed.budget.low,true,'read state does not silence low-balance warning');assert.equal(feed.items.length,2);assert.equal((await notificationFeed(pool,other)).items.length,0);
- state=await readWallet(pool,id);await writeWallet(pool,id,{revision:state.revision,ledger:{...state.ledger,movements:[...state.ledger.movements,movement('income',500000,'income2')]}});assert.equal((await notificationFeed(pool,id)).budget.low,false);
- state=await readWallet(pool,id);await writeWallet(pool,id,{revision:state.revision,ledger:{...state.ledger,movements:[...state.ledger.movements,movement('expense',500000,'expense2')]}});feed=await notificationFeed(pool,id);assert.equal(feed.unread,2);assert.equal(feed.items.length,2,'threshold notices are reused rather than spammed');
+ let feed=await notificationFeed(pool,id);assert.equal(feed.budget.low,true);assert.equal(feed.budget.balance,20000);assert.equal(feed.items.filter(n=>n.kind==='budget80').length,1);assert.equal(feed.items.filter(n=>n.kind==='budget_low').length,1);assert.equal(feed.items.filter(n=>n.kind==='movement_new').length,2);
+ await assert.rejects(markRead(pool,other,{id:feed.items[0].id}),e=>e.message==='NOT_FOUND');await markRead(pool,id,{all:true});feed=await notificationFeed(pool,id);assert.equal(feed.unread,0);assert.equal(feed.budget.low,true,'read state does not silence low-balance warning');assert.equal(feed.items.filter(n=>n.kind.startsWith('budget')).length,2);assert.equal((await notificationFeed(pool,other)).items.length,0);
+ state=await readWallet(pool,id);await writeWallet(pool,id,{revision:state.revision,ledger:{...state.ledger,movements:[...state.ledger.movements,movement('income',500000,'income2')]}});assert.equal((await notificationFeed(pool,id)).budget.low,false);await markRead(pool,id,{all:true});
+ state=await readWallet(pool,id);await writeWallet(pool,id,{revision:state.revision,ledger:{...state.ledger,movements:[...state.ledger.movements,movement('expense',500000,'expense2')]}});feed=await notificationFeed(pool,id);assert.equal(feed.items.filter(n=>n.kind==='budget80'&&!n.read_at).length,1);assert.equal(feed.items.filter(n=>n.kind==='budget_low'&&!n.read_at).length,1);assert.equal(feed.items.filter(n=>n.kind.startsWith('budget')).length,2,'threshold notices are reused rather than spammed');
  }finally{await pool.end();}
 });
 test('API: sesión obligatoria y programación aislada por usuario',async()=>{

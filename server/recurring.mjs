@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { validateRecurring,nextOccurrence,zonedToday,DEFAULT_TIME_ZONE } from '../src/lib/planning.js';
+import { validateRecurring,nextOccurrence,zonedToday,dayDistance,DEFAULT_TIME_ZONE } from '../src/lib/planning.js';
 import { validateLedger } from '../src/lib/ledger.js';
 import { lockedLedger } from './wallet-tools.mjs';
 import { raiseNotice,reconcileAlerts } from './notifications.mjs';
@@ -32,8 +32,8 @@ export function createRecurringService(pool,{now=()=>new Date(),timeZone=process
  }
  async function reminders(userId){
   const day=today();const params=userId?[day,userId]:[day];
-  const {rows}=await pool.query(`SELECT ${fields} FROM ahorra.ahorra_recurring WHERE enabled=true AND archived=false AND next_due>=$1::date AND next_due<=$1::date+1 ${userId?'AND user_id=$2':''}` ,params);
-  for(const r of rows)await raiseNotice(pool,r.user_id,`upcoming:${r.id}:${r.next_due}`,'payment_due',{recurringId:r.id,name:r.name,amountCents:Number(r.amount_cents),currency:r.currency,due:r.next_due},{latch:true});
+  const {rows}=await pool.query(`SELECT ${fields} FROM ahorra.ahorra_recurring WHERE enabled=true AND archived=false AND next_due>=$1::date AND next_due<=$1::date+2 ${userId?'AND user_id=$2':''}` ,params);
+  for(const r of rows)await raiseNotice(pool,r.user_id,`upcoming:${r.id}:${r.next_due}`,'payment_due',{recurringId:r.id,name:r.name,amountCents:Number(r.amount_cents),currency:r.currency,due:r.next_due,daysUntil:dayDistance(r.next_due,day)},{latch:true});
  }
  async function execute(userId,id,{revision,force=false,skip=false,automatic=false}={}){
   const client=await pool.connect();try{await client.query('BEGIN');

@@ -9,6 +9,9 @@
       "maxDuration": 300
     }
   },
+  "crons": [
+    { "path": "/api/jobs", "schedule": "0 12 * * *" }
+  ],
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/index?__route=:path*" }
   ],

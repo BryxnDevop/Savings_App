@@ -35,7 +35,7 @@ npx supabase migration list
 
 Sustituye `TU_PROJECT_REF`. Inicia sesión en tu cuenta Supabase cuando la CLI lo solicite. Si pide contraseña de base, usa la del proyecto. No es la contraseña del login de Ahorra+ ni una clave API.
 
-`--dry-run` permite revisar qué se aplicará; `db push` crea las tablas en el proyecto vinculado. La migración incluida es `20260917000000_ahorra_private.sql`. Si el destino tiene migraciones ajenas y aparecen discrepancias de historial, usa un proyecto vacío para esta instalación o revisa el historial antes de continuar; no marques migraciones como aplicadas sin ejecutarlas.
+`--dry-run` permite revisar qué se aplicará; `db push` crea o actualiza las tablas en el proyecto vinculado. Esta edición incluye `20260917000000_ahorra_private.sql` y `20260919000000_web_push.sql`. La segunda añade las suscripciones y preferencias de Web Push sin borrar los datos financieros existentes. Si el destino tiene migraciones ajenas y aparecen discrepancias de historial, usa un proyecto vacío para esta instalación o revisa el historial antes de continuar; no marques migraciones como aplicadas sin ejecutarlas.
 
 La CLI administra el esquema; la app solo verifica que exista al iniciar. Una CLI vinculada correctamente **no rellena `DATABASE_URL`**. Completa el siguiente paso con el mismo proyecto.
 

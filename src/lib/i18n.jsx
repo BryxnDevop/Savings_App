@@ -25,6 +25,10 @@ const ERRORS = {
   RECURRING_NOT_DUE: ['Este pago está pausado o todavía no vence. Actualiza la lista.', 'This payment is paused or not due yet. Refresh the list.'],
   RECURRING_LIMIT: ['Puedes mantener hasta 100 programaciones. Elimina las que ya no uses.', 'You can keep up to 100 schedules. Delete those you no longer use.'],
   INVALID_NOTIFICATION: ['No se pudo actualizar este aviso. Vuelve a cargar la lista.', 'Could not update this notice. Reload the list.'],
+  PUSH_NOT_CONFIGURED: ['Las notificaciones push todavía no están configuradas en el servidor. Agrega las claves VAPID en Vercel y vuelve a desplegar.', 'Push notifications are not configured on the server yet. Add the VAPID keys in Vercel and redeploy.'],
+  PUSH_PERMISSION_DENIED: ['El navegador no tiene permiso para mostrar notificaciones. Habilítalo en los permisos del sitio e inténtalo de nuevo.', 'The browser is not allowed to show notifications. Enable the site permission and try again.'],
+  PUSH_SUBSCRIPTION_INVALID: ['No se pudo registrar este dispositivo para notificaciones. Actualiza la página e inténtalo de nuevo.', 'This device could not be registered for notifications. Refresh the page and try again.'],
+  PUSH_PREFERENCES_INVALID: ['No se pudieron guardar las preferencias de notificación.', 'Notification preferences could not be saved.'],
 
   MAIL_KEY_MISSING: ['Falta la clave de cifrado del servidor. Ejecuta la configuración y reconstruye la app.', 'Server encryption key is missing. Run setup and rebuild the app.'],
   MAIL_INVALID_SETTINGS: ['Revisa el correo, los remitentes y las etiquetas de lectura.', 'Check the email, senders and reading labels.'],

@@ -1,6 +1,7 @@
 import { createRecurringService } from './recurring.mjs';
 import { notificationFeed, markRead } from './notifications.mjs';
 import { createMailService } from './mail.mjs';
+import { createPushService } from './push.mjs';
 import { randomUUID } from 'node:crypto';
 import { newWallet, readWallet, writeWallet } from './db.mjs';
 import { authenticate, hashPassword, verifyPassword, emailAddress, createSession, cookieToken, cookie, tokenHash, profileFields, fail } from './auth.mjs';
@@ -33,9 +34,11 @@ async function body(req) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw fail('INVALID_JSON');
   return value;
 }
-export function createApi(pool, { origins, rateFetch = fetch, mailService, recurringService, serverless=false, requestIp=req=>req.socket?.remoteAddress }) {
+export function createApi(pool, { origins, rateFetch = fetch, mailService, recurringService, pushService, serverless=false, requestIp=req=>req.socket?.remoteAddress }) {
   const mail = mailService || createMailService(pool);
   const recurring = recurringService || createRecurringService(pool);
+  const push = pushService || createPushService(pool,{subject:process.env.VAPID_SUBJECT||origins[0]});
+  const dispatchPush = userId => push.dispatchUser(userId).catch(e=>console.error('Ahorra+ push dispatch:',e.code||e.message));
   const allowed = new Set(origins);
   const hosts = new Set(origins.map(o => new URL(o).host));
   const secure = new URL(origins[0]).protocol === 'https:';
@@ -89,18 +92,22 @@ export function createApi(pool, { origins, rateFetch = fetch, mailService, recur
       }
       const user = await authenticate(pool, req);
       if(path==='/api/recurring' && req.method==='GET'){send(res,200,await recurring.list(user.id));return true;}
-      if(path==='/api/recurring' && req.method==='POST'){send(res,201,await recurring.save(user.id,await body(req)));return true;}
+      if(path==='/api/recurring' && req.method==='POST'){const result=await recurring.save(user.id,await body(req));await dispatchPush(user.id);send(res,201,result);return true;}
       const schedule=path.match(/^\/api\/recurring\/([0-9a-f-]{36})(\/action)?$/);
-      if(schedule && req.method===(schedule[2]?'POST':'PUT')){const input=await body(req);send(res,200,schedule[2]?await recurring.action(user.id,schedule[1],input):await recurring.save(user.id,input,schedule[1]));return true;}
-      if(path==='/api/notifications' && req.method==='GET'){await recurring.reminders(user.id);send(res,200,await notificationFeed(pool,user.id));return true;}
+      if(schedule && req.method===(schedule[2]?'POST':'PUT')){const input=await body(req);const result=schedule[2]?await recurring.action(user.id,schedule[1],input):await recurring.save(user.id,input,schedule[1]);await dispatchPush(user.id);send(res,200,result);return true;}
+      if(path==='/api/notifications' && req.method==='GET'){await recurring.reminders(user.id);await dispatchPush(user.id);send(res,200,await notificationFeed(pool,user.id));return true;}
       if(path==='/api/notifications/read' && req.method==='POST'){send(res,200,await markRead(pool,user.id,await body(req)));return true;}
+      if(path==='/api/push' && req.method==='GET'){send(res,200,await push.status(user.id));return true;}
+      if(path==='/api/push/subscribe' && req.method==='POST'){send(res,200,await push.subscribe(user.id,await body(req)));return true;}
+      if(path==='/api/push/unsubscribe' && req.method==='POST'){send(res,200,await push.unsubscribe(user.id,await body(req)));return true;}
+      if(path==='/api/push/preferences' && req.method==='PUT'){send(res,200,await push.setPreferences(user.id,await body(req)));return true;}
       if (path === '/api/mail' && req.method === 'GET') { send(res,200,await mail.status(user.id));return true; }
       if (path === '/api/mail/connect' && req.method === 'POST') { rateLimit(req);send(res,200,await mail.connect(user.id,await body(req)));return true; }
       if (path === '/api/mail/settings' && req.method === 'PUT') { send(res,200,await mail.settings(user.id,await body(req)));return true; }
       if (path === '/api/mail/disconnect' && req.method === 'POST') { send(res,200,await mail.disconnect(user.id));return true; }
-      if (path === '/api/mail/check' && req.method === 'POST') { send(res,202,await mail.check(user.id));return true; }
+      if (path === '/api/mail/check' && req.method === 'POST') { const result=await mail.check(user.id);await dispatchPush(user.id);send(res,202,result);return true; }
       if (path === '/api/mail/preview' && req.method === 'POST') { send(res,200,mail.preview(await body(req)));return true; }
-      if (path === '/api/mail/review' && req.method === 'POST') { const input=await body(req);send(res,200,await mail.review(user.id,input.id,input.action));return true; }
+      if (path === '/api/mail/review' && req.method === 'POST') { const input=await body(req);const result=await mail.review(user.id,input.id,input.action);await dispatchPush(user.id);send(res,200,result);return true; }
       if (path === '/api/auth/me' && req.method === 'GET') { send(res, 200, { user }); return true; }
       if (path === '/api/profile' && req.method === 'PATCH') {
         const fields = profileFields(await body(req));
@@ -122,7 +129,7 @@ export function createApi(pool, { origins, rateFetch = fetch, mailService, recur
         send(res, 200, { ok: true }); return true;
       }
       if (path === '/api/state' && req.method === 'GET') { if(serverless)await recurring.tick({userId:user.id,maxBatches:1,batchSize:10,deadline:Date.now()+5000}); send(res, 200, await readWallet(pool, user.id)); return true; }
-      if (path === '/api/state' && req.method === 'PUT') { send(res, 200, await writeWallet(pool, user.id, await body(req))); return true; }
+      if (path === '/api/state' && req.method === 'PUT') { const result=await writeWallet(pool, user.id, await body(req));await dispatchPush(user.id);send(res, 200, result); return true; }
       if (path === '/api/rates' && req.method === 'GET') {
         const { rows: [cached] } = await pool.query("SELECT payload FROM ahorra.ahorra_rate_cache WHERE id=1 AND fetched_at>now()-interval '1 hour'");
         if (cached) { send(res, 200, cached.payload); return true; }

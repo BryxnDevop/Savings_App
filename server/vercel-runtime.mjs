@@ -4,6 +4,7 @@ import { createPool, checkSchema } from './db.mjs';
 import { createMailService } from './mail.mjs';
 import { createRecurringService } from './recurring.mjs';
 import { gmailTransport } from './gmail.mjs';
+import { createPushService } from './push.mjs';
 
 export function deploymentOrigins(env) {
   const values = [env.APP_ORIGIN, ...[env.VERCEL_PROJECT_PRODUCTION_URL,env.VERCEL_URL,env.VERCEL_BRANCH_URL].filter(Boolean).map(host=>'https://'+host)].filter(Boolean);
@@ -38,8 +39,9 @@ export function createVercelHandler({env=process.env,poolFactory=createPool,atta
       await checkSchema(pool);
       const mail=createMailService(pool,{key:env.MAIL_ENCRYPTION_KEY,synchronous:true,transport:{...transport,scan:(...args)=>transport.scan(...args,40000)}});
       const recurring=createRecurringService(pool,{timeZone:env.APP_TIME_ZONE||'America/Santo_Domingo'});
-      const api=createApi(pool,{origins,mailService:mail,recurringService:recurring,serverless:true,requestIp:req=>req.headers['x-vercel-forwarded-for']?.split(',')[0]?.trim()||req.socket?.remoteAddress||'unknown'});
-      return {pool,mail,recurring,api};
+      const push=createPushService(pool,{publicKey:env.VAPID_PUBLIC_KEY,privateKey:env.VAPID_PRIVATE_KEY,subject:env.VAPID_SUBJECT||origins[0]});
+      const api=createApi(pool,{origins,mailService:mail,recurringService:recurring,pushService:push,serverless:true,requestIp:req=>req.headers['x-vercel-forwarded-for']?.split(',')[0]?.trim()||req.socket?.remoteAddress||'unknown'});
+      return {pool,mail,recurring,push,api};
     } catch(e){await pool.end();throw e;}
   }
   return async function handler(req,res) {
@@ -55,7 +57,8 @@ export function createVercelHandler({env=process.env,poolFactory=createPool,atta
         // Keep work bounded; unprocessed rows stay due for the next invocation.
         await runtime.recurring.tick({maxBatches:2,batchSize:50,deadline:Date.now()+20000});
         await runtime.mail.tick({maxAccounts:3,deadline:Date.now()+150000});
-        send(res,200,{ok:true,checkedAt:new Date().toISOString()});return;
+        const push=await runtime.push.dispatchAll({limitUsers:200,limitPerUser:30});
+        send(res,200,{ok:true,push,checkedAt:new Date().toISOString()});return;
       }
       if(!await runtime.api(req,res))send(res,404,{error:'NOT_FOUND'});
     } catch(e) {

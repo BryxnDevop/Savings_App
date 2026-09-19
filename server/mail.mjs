@@ -27,6 +27,7 @@ async function addMovement(client,userId,event,{manual=false}={}) {
   await client.query('INSERT INTO ahorra.ahorra_movements(user_id,id,type,amount_cents,currency,reason,date,note,category,position) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',[userId,movement.id,c.type,c.amountCents,c.currency,c.reason,c.date,c.note,c.category,rows.length]);
   await client.query('UPDATE ahorra.ahorra_wallets SET revision=revision+1,updated_at=now() WHERE user_id=$1',[userId]);
   await client.query("UPDATE ahorra.ahorra_mail_events SET status='applied',movement_id=$2 WHERE id=$1",[event.id,movement.id]);
+  await raiseNotice(client,userId,`movement:${movement.id}`,'movement_new',{type:movement.type,amountCents:movement.amountCents,currency:movement.currency,reason:movement.reason,date:movement.date,movementId:movement.id});
   await reconcileAlerts(client,userId,{version:3,currency:wallet.currency,rates:wallet.rates,rateInfo:wallet.rate_info,goal:wallet.goal,movements:[...rows.map(({amount_cents,...m})=>({...m,amountCents:Number(amount_cents)})),movement]});
   return '';
 }

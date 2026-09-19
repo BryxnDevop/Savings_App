@@ -19,6 +19,38 @@ self.addEventListener('activate', event => {
 self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
+self.addEventListener('push', event => {
+  event.waitUntil((async () => {
+    let payload = {};
+    try { payload = event.data?.json() || {}; } catch { payload = { title: 'Ahorra+', body: event.data?.text() || '' }; }
+    const title = payload.title || 'Ahorra+';
+    const options = {
+      body: payload.body || '',
+      icon: new URL('./icons/icon-192.png', self.registration.scope).href,
+      badge: new URL('./icons/icon-192.png', self.registration.scope).href,
+      tag: payload.tag || 'ahorra-notification',
+      renotify: true,
+      silent: payload.silent === true,
+      timestamp: Number.isFinite(payload.timestamp) ? payload.timestamp : Date.now(),
+      data: { url: payload.url || './#resumen', kind: payload.kind || '' },
+      ...(Array.isArray(payload.vibrate) && payload.silent !== true ? { vibrate: payload.vibrate } : {}),
+    };
+    await self.registration.showNotification(title, options);
+  })());
+});
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  event.waitUntil((async () => {
+    const target = new URL(event.notification.data?.url || './#resumen', self.registration.scope).href;
+    const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const current = windows.find(client => new URL(client.url).origin === self.location.origin);
+    if (current) {
+      if ('navigate' in current) await current.navigate(target);
+      return current.focus();
+    }
+    return self.clients.openWindow ? self.clients.openWindow(target) : undefined;
+  })());
+});
 self.addEventListener('fetch', event => {
   const request = event.request;
   const url = new URL(request.url);

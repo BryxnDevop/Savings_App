@@ -78,7 +78,7 @@ La campana del encabezado abre el centro de notificaciones. Los avisos se guarda
 
 El aviso de **presupuesto por acabarse** aparece en la pantalla cada vez que abres o inicias sesión, mientras se mantenga ese saldo. Marcar la notificación como leída no elimina este aviso. Se retira cuando el saldo vuelve a superar el umbral. Las alertas de umbral no generan una copia cada minuto; se actualizan y se reactivan si sales del umbral y luego vuelves a entrar.
 
-Estos son **avisos dentro de Ahorra+**. No se incluyen notificaciones push al teléfono ni avisos del sistema operativo con la app cerrada. Se consultan al entrar, al guardar movimientos, al volver a enfocar la app y cada minuto mientras la página está visible. El servidor puede generar los avisos aunque el navegador esté cerrado; los verás cuando vuelvas a abrirlo.
+Además de los avisos dentro de Ahorra+, esta edición incluye **Web Push** opcional. Se activa por dispositivo desde Ajustes → Notificaciones push y puede avisar con la app cerrada. Hay preferencias separadas para pagos recurrentes, presupuesto, movimientos nuevos, metas y banco. Los pagos empiezan a avisar desde 2 días antes; las alertas de presupuesto y meta se generan al cambiar los datos financieros. El sonido usa el tono predeterminado del sistema y, cuando el dispositivo lo admite, una vibración suave.
 
 Las copias **JSON** conservan movimientos, meta y tasas, pero no las programaciones ni los avisos. Para respaldar todo, usa `npm run db:export -- --file backups/copia.json`. **Restablecer mis datos** elimina movimientos y meta; las programaciones siguen activas, así que páusalas por separado si no quieres más gastos automáticos.
 

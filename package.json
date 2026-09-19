@@ -18,7 +18,8 @@
     "db:check": "node scripts/check-db.mjs",
     "db:export": "node scripts/transfer-data.mjs export",
     "db:import": "node scripts/transfer-data.mjs import",
-    "supabase": "supabase"
+    "supabase": "supabase",
+    "push:keys": "node scripts/generate-vapid.mjs"
   },
   "dependencies": {
     "@vercel/functions": "3.9.8",

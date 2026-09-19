@@ -19,7 +19,13 @@ npm ci
 npm run build
 ```
 
-Si las tablas de Supabase ya están instaladas, no necesitas recrearlas. Para una instalación nueva, vincula tu proyecto y aplica las migraciones como explica `SUPABASE.md`. Esta versión no modifica ni borra tus tablas financieras.
+Esta edición añade tablas privadas para suscripciones Web Push y estado de entrega. **Aunque ya tengas Ahorra+ funcionando, aplica la migración nueva antes del despliegue**. Vincula tu proyecto y ejecuta:
+
+```powershell
+npx supabase db push
+```
+
+La migración no borra movimientos, usuarios ni pagos existentes.
 
 ## 2. Configuración de Vercel
 
@@ -49,6 +55,9 @@ En **Settings → Environment Variables**, configura valores del servidor para *
 | `APP_ORIGIN` | URL HTTPS exacta de tu aplicación, por ejemplo `https://mi-ahorra.vercel.app`. Con dominio personalizado, usa ese dominio. **Nunca `http://localhost:4173` en Vercel.** Puedes omitirla para usar los dominios automáticos que proporciona Vercel. |
 | `CRON_SECRET` | Clave aleatoria de al menos 32 caracteres, para activar las revisiones programadas. No es la contraseña de la base ni una clave Supabase. |
 | `DB_SSL_CA_CERT` | Si Supabase necesita un certificado raíz propio, pega aquí su contenido PEM completo. Se aceptan saltos de línea reales o `\n`. |
+| `VAPID_PUBLIC_KEY` | Clave pública Web Push generada con `npm run push:keys`. |
+| `VAPID_PRIVATE_KEY` | Clave privada del mismo par. Trátala como secreto y no la pongas en variables `VITE_*`. |
+| `VAPID_SUBJECT` | `https://TU-DOMINIO.vercel.app` o un `mailto:` válido. Puede ser la misma URL de `APP_ORIGIN`. |
 
 En el panel Vercel pega los valores **sin comillas exteriores**. No copies `DB_SSL_CA_FILE` con una ruta de Windows: esa ruta no existe en Vercel. Esta versión verifica TLS; si tu versión local había desactivado la validación, configura `DB_SSL_CA_CERT` con el certificado descargado de Database Settings → SSL Configuration en Supabase.
 
@@ -59,6 +68,14 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
 Copia el resultado en `CRON_SECRET` y consérvalo para el paso 5. No lo pongas en React ni en variables `VITE_*`.
+
+Para generar las claves Web Push una sola vez:
+
+```powershell
+npm run push:keys
+```
+
+Copia `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` y ajusta `VAPID_SUBJECT` en Vercel. **No regeneres estas claves en cada despliegue**: las suscripciones del navegador están vinculadas a esa clave pública.
 
 Tu `.env` local **no configura automáticamente Vercel**. No subas ese archivo al repositorio. La entrega y `.vercelignore` excluyen credenciales y respaldos personales.
 
@@ -95,11 +112,13 @@ Después prueba:
 
 Si tenías la PWA instalada, acepta su actualización. Si sigue mostrando una edición antigua, cierra todas sus ventanas y vuelve a abrirla desde la URL publicada. La nueva compilación genera otra versión del service worker y no cachea `/api/`.
 
-## 5. Gmail y pagos automáticos con el navegador cerrado
+## 5. Push, Gmail y pagos automáticos con el navegador cerrado
 
 Vercel ejecuta funciones cuando recibe solicitudes. Los `setInterval` de una app Node local no constituyen un programador fiable en este entorno.
 
-Esta versión añade **`/api/jobs`**, protegido con `Authorization: Bearer CRON_SECRET`. Procesa vencimientos y buzones pendientes en lotes con tiempo limitado. Los movimientos y los bloqueos están en Supabase, de modo que llamadas repetidas conservan la deduplicación. Lo que no quepa en un lote permanece pendiente para el siguiente. No equivale a una cola sin límites para miles de cuentas.
+Esta versión usa **`/api/jobs`**, protegido con `Authorization: Bearer CRON_SECRET`. Procesa vencimientos, crea recordatorios desde **2 días antes**, revisa buzones pendientes y despacha las notificaciones Web Push. Los movimientos manuales, alertas de presupuesto y avances de meta intentan enviar push inmediatamente al guardarse.
+
+`vercel.json` incluye además un Cron diario a las `12:00 UTC` (08:00 en Santo Domingo) como respaldo compatible con Vercel Hobby. Para comprobaciones más frecuentes puedes mantener la programación de Supabase Cron descrita abajo; no hace falta duplicarla si ya usas otro programador con mayor frecuencia.
 
 Para usarlo también con Vercel Hobby, se incluye una programación desde **Supabase Cron**:
 
@@ -113,7 +132,9 @@ Si Deployment Protection protege también la URL de producción, utiliza el meca
 
 Para detener solamente esta programación, ejecuta `supabase/cron/desactivar.sql`.
 
-**Vercel Hobby limita sus propios Cron Jobs a una ejecución diaria.** Por eso `vercel.json` no declara un cron horario que impediría desplegar. Con Vercel Pro puedes usar su cron apuntando a `/api/jobs`, como alternativa al programador de Supabase; utiliza uno de los dos.
+**Vercel Hobby limita la frecuencia de sus propios Cron Jobs**, por eso el cron incluido es diario y no horario. Con Vercel Pro puedes aumentar la frecuencia del cron de Vercel; alternativamente, el SQL incluido de Supabase Cron llama `/api/jobs` cada cinco minutos y permite mantener también la revisión horaria de Gmail.
+
+Después de desplegar, entra en **Ajustes → Notificaciones push**, pulsa **Activar notificaciones** y acepta el permiso del navegador. La aplicación permite elegir pagos recurrentes, presupuesto, movimientos, metas, banco y sonido/vibración. Web Push utiliza el sonido predeterminado que permita el sistema operativo; los navegadores no ofrecen un audio personalizado consistente en todas las plataformas.
 
 Sin configurar un programador, **Revisar ahora** completa la revisión de tu Gmail durante la solicitud. Los pagos vencidos también se recuperan al cargar tus datos. La revisión automática con el navegador cerrado requiere completar este paso.
 

@@ -33,8 +33,8 @@ export function connectionError(error) {
     ENOTFOUND: 'No se resuelve el servidor. Copia el host exacto desde Connect y comprueba internet.',
     ENETUNREACH: 'La red no llega al servidor. Prueba Session pooler para conectarte por IPv4.',
     ECONNREFUSED: 'Conexión rechazada. Comprueba que el proyecto esté activo y el puerto sea correcto.',
-    SELF_SIGNED_CERT_IN_CHAIN: 'Falta el certificado de confianza. Configura DB_SSL_CA_FILE con el certificado del panel Database Settings.',
-    UNABLE_TO_VERIFY_LEAF_SIGNATURE: 'No se verificó el certificado. Configura DB_SSL_CA_FILE; no desactives TLS.'
+    SELF_SIGNED_CERT_IN_CHAIN: 'Falta el certificado de confianza. En Vercel configura DB_SSL_CA_CERT; en local puedes usar DB_SSL_CA_FILE.',
+    UNABLE_TO_VERIFY_LEAF_SIGNATURE: 'No se verificó el certificado. En Vercel configura DB_SSL_CA_CERT; en local puedes usar DB_SSL_CA_FILE. No desactives TLS.'
   };
   return messages[error.code] || 'No se pudo verificar la conexión. Comprueba internet, el proyecto, la contraseña y el certificado; consulta docs/SUPABASE.md.';
 }
