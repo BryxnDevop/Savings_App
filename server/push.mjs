@@ -79,5 +79,35 @@ export function createPushService(pool,{publicKey=process.env.VAPID_PUBLIC_KEY,p
   const {rows}=await pool.query(`SELECT DISTINCT n.user_id FROM ahorra.ahorra_notifications n WHERE n.active=true AND n.push_sent_at IS NULL AND n.created_at>=now()-interval '7 days' ORDER BY n.user_id LIMIT $1`,[limitUsers]);
   let sent=0;for(const row of rows){const result=await dispatchUser(row.user_id,{limit:limitPerUser});sent+=result.sent||0;}return {sent,users:rows.length};
  }
- return {configured,status,subscribe,unsubscribe,setPreferences,dispatchUser,dispatchAll};
+ async function sendTest(userId,input={}){
+  if(!configured)throw fail('PUSH_NOT_CONFIGURED',503);
+  const delaySeconds=input?.delaySeconds===undefined?8:Number(input.delaySeconds);
+  if(!Number.isInteger(delaySeconds)||delaySeconds<0||delaySeconds>15)throw fail('PUSH_TEST_INVALID');
+  const [preferences,{rows:subscriptions},{rows:[user]}]=await Promise.all([
+   prefs(userId),
+   pool.query('SELECT id,endpoint,p256dh,auth FROM ahorra.ahorra_push_subscriptions WHERE user_id=$1 ORDER BY updated_at DESC',[userId]),
+   pool.query('SELECT language FROM ahorra.ahorra_users WHERE id=$1',[userId])
+  ]);
+  if(!subscriptions.length)throw fail('PUSH_NO_SUBSCRIPTIONS',409);
+  if(delaySeconds)await new Promise(resolve=>setTimeout(resolve,delaySeconds*1000));
+  const en=user?.language==='en';
+  const payload={
+   title:en?'Ahorra+ server push test':'Prueba push de Ahorra+',
+   body:en?'This alert came from the server. Push works even when the app is closed.':'Este aviso llegó desde el servidor. El push funciona aunque la app esté cerrada.',
+   kind:'push_test',
+   tag:`ahorra-test-${randomUUID()}`,
+   url:'/#ajustes',
+   silent:!preferences.sound,
+   vibrate:preferences.sound?[160,80,160]:undefined,
+   timestamp:Date.now()
+  };
+  let sent=0;
+  for(const sub of subscriptions){
+   try{await sendWebPush({endpoint:sub.endpoint,keys:{p256dh:sub.p256dh,auth:sub.auth}},payload,vapid,{fetchImpl,urgency:'high'});sent++;}
+   catch(e){if([404,410].includes(e.statusCode))await pool.query('DELETE FROM ahorra.ahorra_push_subscriptions WHERE id=$1',[sub.id]);else console.error('Ahorra+ push test:',e.code||e.message);}
+  }
+  if(!sent)throw fail('PUSH_DELIVERY_FAILED',502);
+  return {ok:true,sent,delaySeconds};
+ }
+ return {configured,status,subscribe,unsubscribe,setPreferences,dispatchUser,dispatchAll,sendTest};
 }

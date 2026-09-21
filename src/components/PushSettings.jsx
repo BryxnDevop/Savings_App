@@ -57,10 +57,12 @@ export function PushSettings(){
   catch(e){setMessage(error(e));await load(false);}finally{setBusy(false);}
  }
  async function testNotification(){
-  setBusy(true);setMessage('');
+  setBusy(true);
+  setMessage(t('Prueba programada: minimiza o cierra Ahorra+ ahora. El servidor enviará el aviso en unos 8 segundos.','Test scheduled: minimize or close Ahorra+ now. The server will send the alert in about 8 seconds.'));
   try{
    if(Notification.permission!=='granted')throw Object.assign(new Error('PUSH_PERMISSION_DENIED'),{code:'PUSH_PERMISSION_DENIED'});
-   const reg=await navigator.serviceWorker.ready;await reg.showNotification('Ahorra+',{body:t('Tus notificaciones están funcionando correctamente.','Your notifications are working correctly.'),icon:'./icons/icon-192.png',badge:'./icons/icon-192.png',tag:'ahorra-test',renotify:true,silent:data?.preferences?.sound===false,...(data?.preferences?.sound===false?{}:{vibrate:[160,80,160]}),data:{url:'./#resumen'}});
+   const result=await api('/push/test',{method:'POST',body:{delaySeconds:8}});
+   setMessage(t(`Prueba enviada por el servidor a ${result.sent} dispositivo(s).`,`Server test sent to ${result.sent} device(s).`));
   }catch(e){setMessage(error(e));}finally{setBusy(false);}
  }
  const active=localSubscribed&&browserSupported&&Notification.permission==='granted';
@@ -71,8 +73,8 @@ export function PushSettings(){
   <div className="settings-buttons"><button className="button primary" disabled={busy||!data?.configured||!browserSupported||active} onClick={enable}>{busy?t('Procesando…','Working…'):t('Activar notificaciones','Enable notifications')}</button><button className="button secondary" disabled={busy||!active} onClick={disable}>{t('Desactivar en este dispositivo','Disable on this device')}</button></div>
   <div className="settings-divider"/>
   <div className="push-preferences"><h3>{t('Quiero recibir avisos de','Notify me about')}</h3>{KEYS.map(key=><label className="push-toggle" key={key}><span><strong>{t(...labels[key])}</strong>{key==='recurring'&&<small>{t('Te avisaremos desde 2 días antes del próximo pago.','We will alert you starting 2 days before the next payment.')}</small>}{key==='sound'&&<small>{t('Se usa el sonido predeterminado del sistema y una vibración suave cuando el dispositivo lo permite.','Uses the system default sound and a gentle vibration when the device allows it.')}</small>}</span><input type="checkbox" checked={data?.preferences?.[key]??true} disabled={busy||!data} onChange={e=>change(key,e.target.checked)}/></label>)}</div>
-  {active&&<button className="text-button push-test" disabled={busy} onClick={testNotification}><Icon name="bell" size={15}/>{t('Probar notificación en este dispositivo','Test notification on this device')}</button>}
-  {message&&<p className={message.includes('activad')||message.includes('enabled')?'hint':'form-error'} role="status">{message}</p>}
+  {active&&<button className="text-button push-test" disabled={busy} onClick={testNotification}><Icon name="bell" size={15}/>{t('Probar push real con la app cerrada','Test real push with the app closed')}</button>}
+  {message&&<p className={message.includes('activad')||message.includes('enabled')||message.includes('Prueba ')||message.includes('Test ')||message.includes('enviad')||message.includes('sent')?'hint':'form-error'} role="status">{message}</p>}
   <p className="hint">{t('En iPhone/iPad, instala Ahorra+ en la pantalla de inicio para obtener la mejor compatibilidad con notificaciones. El sonido final depende de la configuración del sistema operativo.','On iPhone/iPad, install Ahorra+ on the Home Screen for the best notification support. Final sound behavior depends on the operating system settings.')}</p>
  </section>;
 }

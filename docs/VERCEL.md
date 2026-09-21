@@ -136,6 +136,8 @@ Para detener solamente esta programación, ejecuta `supabase/cron/desactivar.sql
 
 Después de desplegar, entra en **Ajustes → Notificaciones push**, pulsa **Activar notificaciones** y acepta el permiso del navegador. La aplicación permite elegir pagos recurrentes, presupuesto, movimientos, metas, banco y sonido/vibración. Web Push utiliza el sonido predeterminado que permita el sistema operativo; los navegadores no ofrecen un audio personalizado consistente en todas las plataformas.
 
+Para verificar una entrega real desde el servidor, pulsa **Probar push real con la app cerrada** y minimiza/cierra Ahorra+ inmediatamente. El endpoint autenticado `/api/push/test` espera unos 8 segundos y envía el Web Push a todas las suscripciones activas de esa cuenta. Esta prueba no usa `showNotification()` desde la página: recorre el mismo canal VAPID que usan las alertas reales.
+
 Sin configurar un programador, **Revisar ahora** completa la revisión de tu Gmail durante la solicitud. Los pagos vencidos también se recuperan al cargar tus datos. La revisión automática con el navegador cerrado requiere completar este paso.
 
 ## Límites y diagnóstico

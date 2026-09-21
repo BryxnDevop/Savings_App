@@ -101,6 +101,7 @@ export function createApi(pool, { origins, rateFetch = fetch, mailService, recur
       if(path==='/api/push/subscribe' && req.method==='POST'){send(res,200,await push.subscribe(user.id,await body(req)));return true;}
       if(path==='/api/push/unsubscribe' && req.method==='POST'){send(res,200,await push.unsubscribe(user.id,await body(req)));return true;}
       if(path==='/api/push/preferences' && req.method==='PUT'){send(res,200,await push.setPreferences(user.id,await body(req)));return true;}
+      if(path==='/api/push/test' && req.method==='POST'){send(res,200,await push.sendTest(user.id,await body(req)));return true;}
       if (path === '/api/mail' && req.method === 'GET') { send(res,200,await mail.status(user.id));return true; }
       if (path === '/api/mail/connect' && req.method === 'POST') { rateLimit(req);send(res,200,await mail.connect(user.id,await body(req)));return true; }
       if (path === '/api/mail/settings' && req.method === 'PUT') { send(res,200,await mail.settings(user.id,await body(req)));return true; }

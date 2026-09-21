@@ -14,6 +14,8 @@ call npm run setup
 if errorlevel 1 goto error
 call npm run db:check
 if errorlevel 1 goto error
+call npm run build
+if errorlevel 1 goto error
 call npm start -- --open
 if errorlevel 1 goto error
 exit /b 0

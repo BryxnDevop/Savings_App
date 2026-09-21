@@ -29,6 +29,9 @@ const ERRORS = {
   PUSH_PERMISSION_DENIED: ['El navegador no tiene permiso para mostrar notificaciones. Habilítalo en los permisos del sitio e inténtalo de nuevo.', 'The browser is not allowed to show notifications. Enable the site permission and try again.'],
   PUSH_SUBSCRIPTION_INVALID: ['No se pudo registrar este dispositivo para notificaciones. Actualiza la página e inténtalo de nuevo.', 'This device could not be registered for notifications. Refresh the page and try again.'],
   PUSH_PREFERENCES_INVALID: ['No se pudieron guardar las preferencias de notificación.', 'Notification preferences could not be saved.'],
+  PUSH_NO_SUBSCRIPTIONS: ['Este dispositivo todavía no está registrado para recibir push. Activa las notificaciones y vuelve a probar.', 'This device is not registered for push yet. Enable notifications and try again.'],
+  PUSH_DELIVERY_FAILED: ['El servidor no pudo entregar la prueba push. Vuelve a activar las notificaciones y prueba otra vez.', 'The server could not deliver the push test. Re-enable notifications and try again.'],
+  PUSH_TEST_INVALID: ['No se pudo programar la prueba push.', 'The push test could not be scheduled.'],
 
   MAIL_KEY_MISSING: ['Falta la clave de cifrado del servidor. Ejecuta la configuración y reconstruye la app.', 'Server encryption key is missing. Run setup and rebuild the app.'],
   MAIL_INVALID_SETTINGS: ['Revisa el correo, los remitentes y las etiquetas de lectura.', 'Check the email, senders and reading labels.'],

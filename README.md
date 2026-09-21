@@ -1,6 +1,6 @@
-# Ahorra+ 4.1 · React, Supabase, Vercel y PWA
+# Ahorra+ 4.2 · React, Supabase, Vercel y PWA
 
-La base de datos se aloja en **tu proyecto Supabase**. Ya no hace falta iniciar un contenedor PostgreSQL para utilizar la app. Se mantienen el servidor Node, las cuentas actuales, el registro mensual, Gmail y los pagos recurrentes; esta edición añade **Web Push real** para pagos próximos, presupuesto, movimientos, metas y avisos bancarios.
+La base de datos se aloja en **tu proyecto Supabase**. Ya no hace falta iniciar un contenedor PostgreSQL para utilizar la app. Se mantienen el servidor Node, las cuentas actuales, el registro mensual, Gmail y los pagos recurrentes; esta edición añade **Web Push real** para pagos próximos, presupuesto, movimientos, metas y avisos bancarios, además de una prueba enviada desde el servidor para verificar que funciona con la app cerrada.
 
 **Si ya usabas Ahorra+**, lee primero [Trasladar tus datos](docs/SUPABASE.md#trasladar-tus-datos-desde-ahorra-32). Conectar a una base vacía no copia los datos anteriores automáticamente.
 
@@ -32,7 +32,7 @@ npm run db:check
 npm start
 ```
 
-Abre **http://localhost:4173**. Se incluye `dist/` compilado; usa `npm run build` si modificas el código. En próximas ocasiones puedes abrir `INICIAR-WINDOWS.bat` o ejecutar `npm start`. Mantén el proceso en ejecución.
+Para probar esta versión localmente ejecuta `npm run build` antes de `npm start`, porque el Service Worker y la interfaz Push se generan durante la compilación. `INICIAR-WINDOWS.bat` y `INICIAR-MAC-LINUX.command` ya hacen ese build automáticamente. Mantén el proceso en ejecución.
 
 **Guía completa y solución de errores:** [docs/SUPABASE.md](docs/SUPABASE.md). Incluye TLS, migración de tus registros, Docker opcional, Supabase local y respaldos completos.
 
