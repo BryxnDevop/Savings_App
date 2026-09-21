@@ -7,7 +7,7 @@ export async function checkSchema(pool) {
   const { rows } = await pool.query("SELECT to_regclass('ahorra.schema_version') AS installed");
   if (!rows[0].installed) throw Object.assign(new Error('Faltan las tablas. Ejecuta npx supabase db push.'), { code: 'MIGRATION_REQUIRED' });
   const { rows: versions } = await pool.query('SELECT version FROM ahorra.schema_version WHERE id=1');
-  if (versions[0]?.version !== 2) throw Object.assign(new Error('Versión de base incompatible. Ejecuta npx supabase db push para aplicar las migraciones nuevas.'), { code: 'MIGRATION_REQUIRED' });
+  if (versions[0]?.version !== 3) throw Object.assign(new Error('Versión de base incompatible. Ejecuta npx supabase db push para aplicar las migraciones nuevas.'), { code: 'MIGRATION_REQUIRED' });
   // Verify actual table access as well as the marker, without changing any data.
   await pool.query('SELECT u.id FROM ahorra.ahorra_users u LEFT JOIN ahorra.ahorra_wallets w ON w.user_id=u.id LIMIT 0');
 }
@@ -19,6 +19,8 @@ export async function migrate(pool) {
     await client.query('SELECT pg_advisory_xact_lock(73429051)');
     await client.query(await readFile(new URL('../supabase/migrations/20260917000000_ahorra_private.sql', import.meta.url), 'utf8'));
     await client.query(await readFile(new URL('../supabase/migrations/20260919000000_web_push.sql', import.meta.url), 'utf8'));
+    await client.query(await readFile(new URL('../supabase/migrations/20260921150000_repair_web_push_schema.sql', import.meta.url), 'utf8'));
+    await client.query(await readFile(new URL('../supabase/migrations/20260921193000_notification_dismissal.sql', import.meta.url), 'utf8'));
     await client.query('COMMIT');
   } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
 }

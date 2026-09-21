@@ -1,5 +1,5 @@
 import { createRecurringService } from './recurring.mjs';
-import { notificationFeed, markRead } from './notifications.mjs';
+import { notificationFeed, markRead, dismissNotifications } from './notifications.mjs';
 import { createMailService } from './mail.mjs';
 import { createPushService } from './push.mjs';
 import { randomUUID } from 'node:crypto';
@@ -97,6 +97,7 @@ export function createApi(pool, { origins, rateFetch = fetch, mailService, recur
       if(schedule && req.method===(schedule[2]?'POST':'PUT')){const input=await body(req);const result=schedule[2]?await recurring.action(user.id,schedule[1],input):await recurring.save(user.id,input,schedule[1]);await dispatchPush(user.id);send(res,200,result);return true;}
       if(path==='/api/notifications' && req.method==='GET'){await recurring.reminders(user.id);await dispatchPush(user.id);send(res,200,await notificationFeed(pool,user.id));return true;}
       if(path==='/api/notifications/read' && req.method==='POST'){send(res,200,await markRead(pool,user.id,await body(req)));return true;}
+      if(path==='/api/notifications/delete' && req.method==='POST'){send(res,200,await dismissNotifications(pool,user.id,await body(req)));return true;}
       if(path==='/api/push' && req.method==='GET'){send(res,200,await push.status(user.id));return true;}
       if(path==='/api/push/subscribe' && req.method==='POST'){send(res,200,await push.subscribe(user.id,await body(req)));return true;}
       if(path==='/api/push/unsubscribe' && req.method==='POST'){send(res,200,await push.unsubscribe(user.id,await body(req)));return true;}
@@ -148,7 +149,7 @@ export function createApi(pool, { origins, rateFetch = fetch, mailService, recur
     } catch (e) {
       const status = e.status || 503;
       const code = e.status ? e.message : 'DATABASE_UNAVAILABLE';
-      if (!e.status) console.error('Error de servicio:', e.code || 'DB_OR_SERVER');
+      if (!e.status) console.error('Error de servicio:', e.code || 'DB_OR_SERVER', e.column ? `column=${e.column}` : '', e.message || '');
       if (!res.headersSent && !res.destroyed) send(res, status, { error: code });
       return true;
     }

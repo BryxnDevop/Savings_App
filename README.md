@@ -1,8 +1,16 @@
-# Ahorra+ 4.2 · React, Supabase, Vercel y PWA
+# Ahorra+ 4.2.2 · React, Supabase, Vercel y PWA
 
 La base de datos se aloja en **tu proyecto Supabase**. Ya no hace falta iniciar un contenedor PostgreSQL para utilizar la app. Se mantienen el servidor Node, las cuentas actuales, el registro mensual, Gmail y los pagos recurrentes; esta edición añade **Web Push real** para pagos próximos, presupuesto, movimientos, metas y avisos bancarios, además de una prueba enviada desde el servidor para verificar que funciona con la app cerrada.
 
 **Si ya usabas Ahorra+**, lee primero [Trasladar tus datos](docs/SUPABASE.md#trasladar-tus-datos-desde-ahorra-32). Conectar a una base vacía no copia los datos anteriores automáticamente.
+
+## Novedades 4.2.2
+
+- Las notificaciones internas ahora pueden eliminarse de forma individual o con **Eliminar todas**. Los avisos persistentes eliminados no reaparecen hasta que cambie realmente la condición que los genera.
+- Ahorra+ reproduce un **tono corto y discreto** cuando llega una notificación nueva mientras la app está abierta y la preferencia de sonido está habilitada. Puedes escucharlo desde Ajustes.
+- Cuando la PWA está cerrada, Web Push continúa usando el sonido permitido por Windows/Android/iOS; los navegadores web no permiten imponer un archivo de sonido personalizado al sistema operativo.
+
+Después de actualizar, aplica la nueva migración con `npx supabase db push` antes de desplegar el backend 4.2.2.
 
 ## Desplegar en Vercel
 

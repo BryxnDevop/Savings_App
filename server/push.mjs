@@ -58,7 +58,7 @@ export function createPushService(pool,{publicKey=process.env.VAPID_PUBLIC_KEY,p
    prefs(userId),
    pool.query('SELECT id,endpoint,p256dh,auth FROM ahorra.ahorra_push_subscriptions WHERE user_id=$1 ORDER BY updated_at DESC',[userId]),
    pool.query(`SELECT n.id,n.event_key,n.kind,n.payload,n.created_at,u.language FROM ahorra.ahorra_notifications n JOIN ahorra.ahorra_users u ON u.id=n.user_id
-    WHERE n.user_id=$1 AND n.active=true AND n.push_sent_at IS NULL ORDER BY n.created_at,n.id LIMIT $2`,[userId,limit])
+    WHERE n.user_id=$1 AND n.active=true AND n.dismissed_at IS NULL AND n.push_sent_at IS NULL ORDER BY n.created_at,n.id LIMIT $2`,[userId,limit])
   ]);
   if(!subscriptions.length)return {sent:0,subscriptions:0};let sent=0;
   for(const notice of notices){
@@ -76,7 +76,7 @@ export function createPushService(pool,{publicKey=process.env.VAPID_PUBLIC_KEY,p
  }
  async function dispatchAll({limitUsers=100,limitPerUser=30}={}){
   if(!configured)return {sent:0,users:0,skipped:true};
-  const {rows}=await pool.query(`SELECT DISTINCT n.user_id FROM ahorra.ahorra_notifications n WHERE n.active=true AND n.push_sent_at IS NULL AND n.created_at>=now()-interval '7 days' ORDER BY n.user_id LIMIT $1`,[limitUsers]);
+  const {rows}=await pool.query(`SELECT DISTINCT n.user_id FROM ahorra.ahorra_notifications n WHERE n.active=true AND n.dismissed_at IS NULL AND n.push_sent_at IS NULL AND n.created_at>=now()-interval '7 days' ORDER BY n.user_id LIMIT $1`,[limitUsers]);
   let sent=0;for(const row of rows){const result=await dispatchUser(row.user_id,{limit:limitPerUser});sent+=result.sent||0;}return {sent,users:rows.length};
  }
  async function sendTest(userId,input={}){

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { Icon } from './Icon';
 import { useI18n } from '../lib/i18n';
+import { playNotificationSound } from '../lib/notificationSound';
 
 const KEYS=['recurring','budget','movements','goals','bank','sound'];
 const labels={
@@ -10,7 +11,7 @@ const labels={
  movements:['Cada movimiento nuevo','Every new movement'],
  goals:['Motivación de metas','Goal motivation'],
  bank:['Movimientos del banco','Bank movements'],
- sound:['Sonido y vibración del sistema','System sound and vibration'],
+ sound:['Sonido de notificaciones','Notification sound'],
 };
 function applicationKey(value){
  const pad='='.repeat((4-value.length%4)%4);const raw=atob((value+pad).replace(/-/g,'+').replace(/_/g,'/'));const out=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)out[i]=raw.charCodeAt(i);return out;
@@ -65,15 +66,15 @@ export function PushSettings(){
    setMessage(t(`Prueba enviada por el servidor a ${result.sent} dispositivo(s).`,`Server test sent to ${result.sent} device(s).`));
   }catch(e){setMessage(error(e));}finally{setBusy(false);}
  }
- const active=localSubscribed&&browserSupported&&Notification.permission==='granted';
+ const active=localSubscribed&&Number(data?.subscriptions||0)>0&&browserSupported&&Notification.permission==='granted';
  return <section className="panel settings-panel push-settings"><div className="settings-title"><span className="icon-tile green"><Icon name="bell"/></span><div><h2>{t('Notificaciones push','Push notifications')}</h2><p>{t('Avisos importantes incluso cuando Ahorra+ está cerrada.','Important alerts even when Ahorra+ is closed.')}</p></div></div>
   {!browserSupported&&<p className="form-error">{t('Web Push requiere HTTPS y un navegador compatible.','Web Push requires HTTPS and a compatible browser.')}</p>}
   {data&&!data.configured&&<p className="form-error">{t('Faltan VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY en Vercel. La app funciona, pero el push todavía no puede activarse.','VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are missing in Vercel. The app works, but push cannot be enabled yet.')}</p>}
   <div className={`push-status ${active?'is-active':''}`}><span/><div><strong>{active?t('Push activado','Push enabled'):t('Push desactivado','Push disabled')}</strong><small>{active?t('Este dispositivo recibirá avisos según tus preferencias.','This device will receive alerts based on your preferences.'):t('Actívalo una vez y acepta el permiso del navegador.','Enable it once and accept the browser permission.')}</small></div></div>
   <div className="settings-buttons"><button className="button primary" disabled={busy||!data?.configured||!browserSupported||active} onClick={enable}>{busy?t('Procesando…','Working…'):t('Activar notificaciones','Enable notifications')}</button><button className="button secondary" disabled={busy||!active} onClick={disable}>{t('Desactivar en este dispositivo','Disable on this device')}</button></div>
   <div className="settings-divider"/>
-  <div className="push-preferences"><h3>{t('Quiero recibir avisos de','Notify me about')}</h3>{KEYS.map(key=><label className="push-toggle" key={key}><span><strong>{t(...labels[key])}</strong>{key==='recurring'&&<small>{t('Te avisaremos desde 2 días antes del próximo pago.','We will alert you starting 2 days before the next payment.')}</small>}{key==='sound'&&<small>{t('Se usa el sonido predeterminado del sistema y una vibración suave cuando el dispositivo lo permite.','Uses the system default sound and a gentle vibration when the device allows it.')}</small>}</span><input type="checkbox" checked={data?.preferences?.[key]??true} disabled={busy||!data} onChange={e=>change(key,e.target.checked)}/></label>)}</div>
-  {active&&<button className="text-button push-test" disabled={busy} onClick={testNotification}><Icon name="bell" size={15}/>{t('Probar push real con la app cerrada','Test real push with the app closed')}</button>}
+  <div className="push-preferences"><h3>{t('Quiero recibir avisos de','Notify me about')}</h3>{KEYS.map(key=><label className="push-toggle" key={key}><span><strong>{t(...labels[key])}</strong>{key==='recurring'&&<small>{t('Te avisaremos desde 2 días antes del próximo pago.','We will alert you starting 2 days before the next payment.')}</small>}{key==='sound'&&<small>{t('Dentro de Ahorra+ escucharás un tono suave propio. Con la app cerrada, Web Push usa el sonido permitido por el sistema y una vibración discreta.','Inside Ahorra+ you will hear a soft custom chime. With the app closed, Web Push uses the sound allowed by the system and a gentle vibration.')}</small>}</span><input type="checkbox" checked={data?.preferences?.[key]??true} disabled={busy||!data} onChange={e=>change(key,e.target.checked)}/></label>)}</div>
+  <div className="push-tools"><button className="text-button push-test" disabled={busy||data?.preferences?.sound===false} onClick={()=>playNotificationSound()}><Icon name="bell" size={15}/>{t('Escuchar sonido de Ahorra+','Preview Ahorra+ sound')}</button>{active&&<button className="text-button push-test" disabled={busy} onClick={testNotification}><Icon name="bell" size={15}/>{t('Probar push real con la app cerrada','Test real push with the app closed')}</button>}</div>
   {message&&<p className={message.includes('activad')||message.includes('enabled')||message.includes('Prueba ')||message.includes('Test ')||message.includes('enviad')||message.includes('sent')?'hint':'form-error'} role="status">{message}</p>}
   <p className="hint">{t('En iPhone/iPad, instala Ahorra+ en la pantalla de inicio para obtener la mejor compatibilidad con notificaciones. El sonido final depende de la configuración del sistema operativo.','On iPhone/iPad, install Ahorra+ on the Home Screen for the best notification support. Final sound behavior depends on the operating system settings.')}</p>
  </section>;
