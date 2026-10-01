@@ -1,4 +1,20 @@
-# Ahorra+ 4.2.2 · React, Supabase, Vercel y PWA
+# Ahorra+ 2.0 · Product Edition · React, Supabase, Vercel y PWA
+
+## Ahorra+ 2.0 — nueva experiencia
+
+Esta entrega conserva la temática, el backend y los datos de Ahorra+ 4.2.2, pero renueva la experiencia de producto:
+
+- dashboard reconstruido con la composición visual de la referencia: saldo, guardado, retirado, gráfico diario, últimos movimientos, pagos próximos y meta;
+- nueva vista **Análisis** con tasa de ahorro, gasto por día activo, categorías principales, balance mensual y lectura automática del mes;
+- nuevo bloque **Pulso financiero** en el inicio con proyección de cierre, gasto diario promedio, categoría de mayor gasto y tasa de ahorro;
+- selector de mes en el gráfico principal y comparación automática contra el mes anterior;
+- mejor jerarquía visual, tarjetas, sombras, densidad, espaciado y comportamiento responsive;
+- mejoras específicas para móvil, incluyendo navegación inferior de siete accesos y tarjetas adaptadas;
+- compatibilidad conservada con modo claro/oscuro, Supabase, Gmail, pagos recurrentes, Web Push, PWA, monedas, respaldos y registro quincenal.
+
+No se añadió una migración de base de datos: las nuevas métricas se calculan a partir de los movimientos existentes.
+
+La entrega fuente no depende de un `dist/` precompilado: ejecuta `npm ci` y `npm run build` para generar la interfaz 2.0 antes de `npm start` o deja que Vercel la compile durante el despliegue.
 
 La base de datos se aloja en **tu proyecto Supabase**. Ya no hace falta iniciar un contenedor PostgreSQL para utilizar la app. Se mantienen el servidor Node, las cuentas actuales, el registro mensual, Gmail y los pagos recurrentes; esta edición añade **Web Push real** para pagos próximos, presupuesto, movimientos, metas y avisos bancarios, además de una prueba enviada desde el servidor para verificar que funciona con la app cerrada.
 
