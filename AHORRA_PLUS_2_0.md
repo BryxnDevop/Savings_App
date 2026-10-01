@@ -34,3 +34,7 @@ La nueva versión mantiene la identidad financiera verde y clara de Ahorra+, per
 ## Compatibilidad
 
 No cambia el formato del ledger ni se exige una nueva migración de base de datos. Se conservan las funciones existentes: Supabase, login, Gmail, pagos recurrentes, notificaciones push, PWA, metas, registro mensual, monedas, importación/exportación y respaldos.
+
+## Ajuste solicitado: Resumen clásico
+
+La pantalla **Resumen** fue restaurada a la composición de la versión anterior de Ahorra+: tarjetas de saldo/guardado/retirado, próximos pagos, gráfico de actividad, meta y últimos movimientos. Las mejoras 2.0 se mantienen en el resto de la aplicación, incluido el módulo **Análisis**.
